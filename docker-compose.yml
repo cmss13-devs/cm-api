@@ -1,0 +1,6 @@
+services:
+  cm-api:
+    image: cm-api
+    build:
+      context: .
+      dockerfile: Dockerfile
