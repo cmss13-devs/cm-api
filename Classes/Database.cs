@@ -169,6 +169,8 @@ public class Database : IDatabase
 
                     notes.Add(note);
                 }
+                
+                sqlConnection.Close();
             }
 
             return notes;
@@ -217,6 +219,8 @@ public class Database : IDatabase
                     
                     jobBans.Add(ban);
                 }
+                
+                sqlConnection.Close();
             }
 
             return jobBans;
@@ -244,8 +248,9 @@ public class Database : IDatabase
             using (var sqlReader = sqlCommand.ExecuteReader())
             {
                 sqlReader.Read();
-
-                return sqlReader.GetString("ckey");
+                var ckey = sqlReader.GetString("ckey");
+                sqlConnection.Close();
+                return ckey;
             }
         }
         catch (MySqlException exception)
