@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
 builder.Services.AddScoped<IDatabase, Database>();
+builder.Services.AddSingleton<IByond, CmApi.Classes.Byond>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: "cors", policy =>
