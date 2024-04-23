@@ -21,7 +21,7 @@ public class ConnectionsController : ControllerBase
     [Route("Ip")]
     public IActionResult GetConnectionIp(string ip)
     {
-        var triplets = _database.GetConnections(ip);
+        var triplets = _database.GetConnectionsByIp(ip);
         if (triplets.Count == 0)
         {
             return NotFound();
@@ -31,9 +31,9 @@ public class ConnectionsController : ControllerBase
     
     [HttpGet]
     [Route("Cid")]
-    public IActionResult GetConnectionCid(int cid)
+    public IActionResult GetConnectionCid(string cid)
     {
-        var triplets = _database.GetConnections(cid);
+        var triplets = _database.GetConnectionsByCid(cid);
         if (triplets.Count == 0)
         {
             return NotFound();

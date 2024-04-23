@@ -295,7 +295,7 @@ public class Database(IConfiguration configuration) : IDatabase
         }
     }
 
-    public List<LoginTriplet> GetConnections(int cid)
+    public List<LoginTriplet> GetConnectionsByCid(string cid)
     {
         var sqlCommand = new MySqlCommand();
         sqlCommand.CommandText = @"SELECT * FROM login_triplets WHERE last_known_cid = @cid";
@@ -304,7 +304,7 @@ public class Database(IConfiguration configuration) : IDatabase
         return AcquireTriplets(sqlCommand);
     }
     
-    public List<LoginTriplet> GetConnections(string ip)
+    public List<LoginTriplet> GetConnectionsByIp(string ip)
     {
 
         var split = ip.Split(".");
@@ -395,8 +395,8 @@ public interface IDatabase
     Player? GetPlayer(int id);
     Player? GetPlayer(string ckey);
 
-    List<LoginTriplet> GetConnections(int cid);
-    List<LoginTriplet> GetConnections(string ip);
+    List<LoginTriplet> GetConnectionsByCid(string cid);
+    List<LoginTriplet> GetConnectionsByIp(string ip);
     
     IEnumerable<PlayerNote>? GetPlayerNotes(int id);
 }
