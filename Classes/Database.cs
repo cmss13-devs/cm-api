@@ -88,12 +88,7 @@ public class Database : IDatabase
                     timeBanAdmin = ShallowPlayerName(timebanAdminId.Value);
                 }
 
-                long? discordId = null;
-                var discordLinkId = GetInt32NullSafe(dataReader, "discord_link_id");
-                if (discordLinkId.HasValue)
-                {
-                    discordId = GetDiscordLink(discordLinkId.Value)?.DiscordId;
-                }
+                var discordId = GetDiscordLink(gottenId)?.DiscordId;
 
                 user = new Player(
                     Id: gottenId,
@@ -114,7 +109,7 @@ public class Database : IDatabase
                     MigratedJobBans: dataReader.GetBoolean("migrated_jobbans"),
                     PermabanAdminId: permabanAdminId,
                     StickybanWhitelisted: GetBoolNullSafe(dataReader, "stickyban_whitelisted"),
-                    DiscordLinkId: discordLinkId,
+                    DiscordLinkId: GetInt32NullSafe(dataReader, "discord_link_id"),
                     WhitelistStatus: GetStringNullSafe(dataReader, "whitelist_status"),
                     ByondAccountAge: GetStringNullSafe(dataReader, "byond_account_age"),
                     FirstJoinDate: GetStringNullSafe(dataReader, "first_join_date"),
@@ -277,43 +272,13 @@ public class Database : IDatabase
 
                 var sqlCommand = new MySqlCommand();
                 sqlCommand.Connection = sqlConnection;
-                sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE id = @id";
+                sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE player_id = @id";
                 sqlCommand.Parameters.AddWithValue("@id", id);
 
                 DiscordLink? link = null;
 
                 using (var sqlReader = sqlCommand.ExecuteReader())
                 {
-                    if (sqlReader.HasRows)
-                    {
-                        sqlReader.Read();
-
-                        link = new DiscordLink(
-                            Id: sqlReader.GetInt32("id"),
-                            DiscordId: sqlReader.GetInt64("discord_id"),
-                            PlayerId: sqlReader.GetInt32("player_id")
-                        );
-                    
-                        sqlConnection.Close();
-                    }
-                    
-                }
-
-                if (link != null)
-                {
-                    return link;
-                }
-
-                sqlConnection = GetConnection();
-                sqlConnection.Open();
-                
-                sqlCommand = new MySqlCommand();
-                sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE player_id = @id";
-                sqlCommand.Parameters.AddWithValue("@id", id);
-                
-                using (var sqlReader = sqlCommand.ExecuteReader())
-                {
-                    if (!sqlReader.HasRows) return null;
                     sqlReader.Read();
 
                     link = new DiscordLink(
@@ -321,9 +286,9 @@ public class Database : IDatabase
                         DiscordId: sqlReader.GetInt64("discord_id"),
                         PlayerId: sqlReader.GetInt32("player_id")
                     );
-                    
+                
                     sqlConnection.Close();
-
+                    
                 }
 
                 return link;
