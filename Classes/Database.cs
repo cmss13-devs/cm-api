@@ -3,16 +3,8 @@ using MySql.Data.MySqlClient;
 
 namespace CmApi.Classes;
 
-public class Database : IDatabase
-{ 
-
-    private readonly IConfiguration _configuration;
-
-    public Database(IConfiguration configuration)
-    {
-        _configuration = configuration;
-    }
-
+public class Database(IConfiguration configuration) : IDatabase
+{
     /// <summary>
     /// Gets a user based on the ID.
     /// </summary>
@@ -275,7 +267,7 @@ public class Database : IDatabase
                 sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE player_id = @id";
                 sqlCommand.Parameters.AddWithValue("@id", id);
 
-                DiscordLink? link = null;
+                DiscordLink? link;
 
                 using (var sqlReader = sqlCommand.ExecuteReader())
                 {
@@ -303,9 +295,78 @@ public class Database : IDatabase
         }
     }
 
+    public List<LoginTriplet> GetConnections(int cid)
+    {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM login_triplets WHERE last_known_cid = @cid";
+        sqlCommand.Parameters.AddWithValue("@cid", cid);
+
+        return AcquireTriplets(sqlCommand);
+    }
+    
+    public List<LoginTriplet> GetConnections(string ip)
+    {
+
+        var split = ip.Split(".");
+
+        if (split.Length != 4)
+        {
+            return new List<LoginTriplet>();
+        }
+        
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM login_triplets WHERE ip1 = @ip1 AND ip2 = @ip2 AND ip3 = @ip3 AND ip4 = @ip4";
+        sqlCommand.Parameters.AddWithValue("@ip1", split[0]);
+        sqlCommand.Parameters.AddWithValue("@ip2", split[1]);
+        sqlCommand.Parameters.AddWithValue("@ip3", split[2]);
+        sqlCommand.Parameters.AddWithValue("@ip4", split[3]);
+
+        return AcquireTriplets(sqlCommand);
+    }
+
+    private List<LoginTriplet> AcquireTriplets(MySqlCommand sqlCommand)
+    {
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
+
+            sqlCommand.Connection = sqlConnection;
+
+            var triplets = new List<LoginTriplet>();
+
+            using var sqlReader = sqlCommand.ExecuteReader();
+            while (sqlReader.Read())
+            {
+                triplets.Add(new LoginTriplet(
+                    Id: sqlReader.GetInt32("id"),
+                    Ckey: sqlReader.GetString("ckey"),
+                    Ip1: sqlReader.GetInt32("ip1"),
+                    Ip2: sqlReader.GetInt32("ip2"),
+                    Ip3: sqlReader.GetInt32("ip3"),
+                    Ip4: sqlReader.GetInt32("ip4"),
+                    LastKnownCid: sqlReader.GetString("last_known_cid"),
+                    LoginDate: sqlReader.GetDateTime("login_date")
+                ));
+            }
+                
+            sqlConnection.Close();
+
+            return triplets;
+            
+        }
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+
+        return new List<LoginTriplet>();
+
+    }
+
     private MySqlConnection GetConnection()
     {
-        return new MySqlConnection(_configuration.GetConnectionString("mysql"));
+        return new MySqlConnection(configuration.GetConnectionString("mysql"));
     }
     
     private static bool GetBoolNullSafe(MySqlDataReader reader, string column)
@@ -333,5 +394,9 @@ public interface IDatabase
 {
     Player? GetPlayer(int id);
     Player? GetPlayer(string ckey);
+
+    List<LoginTriplet> GetConnections(int cid);
+    List<LoginTriplet> GetConnections(string ip);
+    
     IEnumerable<PlayerNote>? GetPlayerNotes(int id);
 }
