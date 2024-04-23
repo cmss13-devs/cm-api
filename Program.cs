@@ -39,10 +39,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UsePathBase("/api");
+}
 
 app.UseHttpsRedirection();
+app.UseCors("cors");
 app.UseAuthorization();
 app.MapControllers();
-app.UseCors("cors");
 
 app.Run();

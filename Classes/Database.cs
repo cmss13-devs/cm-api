@@ -4,7 +4,7 @@ using MySql.Data.MySqlClient;
 namespace CmApi.Classes;
 
 public class Database : IDatabase
-{
+{ 
 
     private readonly IConfiguration _configuration;
 
