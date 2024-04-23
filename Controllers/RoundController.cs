@@ -1,5 +1,6 @@
-using System.Net;
+using System.Text.Json;
 using Byond.TopicSender;
+using CmApi.Classes;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CmApi.Controllers;
@@ -9,21 +10,30 @@ namespace CmApi.Controllers;
 /// </summary>
 [ApiController]
 [Route("[controller]")]
-public class RoundController(ILogger<TopicClient> logger) : ControllerBase
+public class RoundController(IConfiguration configuration) : ControllerBase
 {
-    private readonly ILogger<TopicClient> _logger = logger;
+
+    private IConfiguration _configuration = configuration;
+    private JsonSerializerOptions _serializer = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
+    private string? _cachedStatus;
+    private DateTime? _cacheTime;
 
     [HttpGet]
     public IActionResult CurrentRoundInfo()
     {
 
-        DoThing();
-        
-        return Ok();
-    }
-
-    private async void DoThing()
-    {
+        if (_cacheTime.HasValue)
+        {
+            var oneMinuteLater = _cacheTime.Value.AddMinutes(1);
+            if (oneMinuteLater > DateTime.Now)
+            {
+                return Ok(_cachedStatus);
+            }
+        }
 
         var tenSeconds = TimeSpan.FromSeconds(10);
         
@@ -35,11 +45,25 @@ public class RoundController(ILogger<TopicClient> logger) : ControllerBase
             SendTimeout = tenSeconds,
         });
 
-        var ip = IPAddress.Parse("127.0.0.1");
+        var host = _configuration.GetSection("Game")["Host"];
+        var port = _configuration.GetSection("Game")["Port"];
+        var auth = _configuration.GetSection("Game")["AuthToken"];
         
-        var send = await sender.SendTopic(ip, "status", 1400);
+        if (auth == null || port == null || host == null)
+        {
+            return StatusCode(501);
+        }
+
+        var json = JsonSerializer.Serialize(new ByondQuery(auth, "status", "cm-api"), _serializer);
+
+        var send = sender.SendTopic(host, json, ushort.Parse(port));
+        var task = send.AsTask();
+
+        _cachedStatus = task.Result.StringData;
+        _cacheTime = DateTime.Now;
         
-        Console.WriteLine(send.StringData);
-        
+        return Ok(_cachedStatus);
     }
+
+
 }
