@@ -88,6 +88,13 @@ public class Database : IDatabase
                     timeBanAdmin = ShallowPlayerName(timebanAdminId.Value);
                 }
 
+                long? discordId = null;
+                var discordLinkId = GetInt32NullSafe(dataReader, "discord_link_id");
+                if (discordLinkId.HasValue)
+                {
+                    discordId = GetDiscordLink(discordLinkId.Value)?.DiscordId;
+                }
+
                 user = new Player(
                     Id: gottenId,
                     Ckey: dataReader.GetString("ckey"),
@@ -107,14 +114,15 @@ public class Database : IDatabase
                     MigratedJobBans: dataReader.GetBoolean("migrated_jobbans"),
                     PermabanAdminId: permabanAdminId,
                     StickybanWhitelisted: GetBoolNullSafe(dataReader, "stickyban_whitelisted"),
-                    DiscordLinkId: GetInt32NullSafe(dataReader, "discord_link_id"),
+                    DiscordLinkId: discordLinkId,
                     WhitelistStatus: GetStringNullSafe(dataReader, "whitelist_status"),
                     ByondAccountAge: GetStringNullSafe(dataReader, "byond_account_age"),
                     FirstJoinDate: GetStringNullSafe(dataReader, "first_join_date"),
                     Notes: notes,
                     JobBans: bans,
                     PermabanAdminCkey: permabanningAdmin,
-                    TimeBanAdminCkey: timeBanAdmin
+                    TimeBanAdminCkey: timeBanAdmin,
+                    DiscordId: discordId
                 );
 
             }
@@ -197,31 +205,29 @@ public class Database : IDatabase
 
             var jobBans = new List<PlayerJobBan>();
 
-            using (var sqlReader = sqlCommand.ExecuteReader())
+            using var sqlReader = sqlCommand.ExecuteReader();
+            while (sqlReader.Read())
             {
-                while (sqlReader.Read())
-                {
 
-                    var banningAdminId = sqlReader.GetInt32("admin_id");
-                    var banningAdmin = ShallowPlayerName(banningAdminId);
+                var banningAdminId = sqlReader.GetInt32("admin_id");
+                var banningAdmin = ShallowPlayerName(banningAdminId);
                     
-                    var ban = new PlayerJobBan(
-                        Id: sqlReader.GetInt32("id"),
-                        PlayerId: sqlReader.GetInt32("player_id"),
-                        AdminId: banningAdminId,
-                        Text: sqlReader.GetString("text"),
-                        Date: sqlReader.GetString("date"),
-                        BanTime: GetInt32NullSafe(sqlReader, "ban_time"),
-                        Expiration: GetInt64NullSafe(sqlReader, "expiration"),
-                        Role: sqlReader.GetString("role"),
-                        BanningAdminCkey: banningAdmin
-                    );
+                var ban = new PlayerJobBan(
+                    Id: sqlReader.GetInt32("id"),
+                    PlayerId: sqlReader.GetInt32("player_id"),
+                    AdminId: banningAdminId,
+                    Text: sqlReader.GetString("text"),
+                    Date: sqlReader.GetString("date"),
+                    BanTime: GetInt32NullSafe(sqlReader, "ban_time"),
+                    Expiration: GetInt64NullSafe(sqlReader, "expiration"),
+                    Role: sqlReader.GetString("role"),
+                    BanningAdminCkey: banningAdmin
+                );
                     
-                    jobBans.Add(ban);
-                }
-                
-                sqlConnection.Close();
+                jobBans.Add(ban);
             }
+                
+            sqlConnection.Close();
 
             return jobBans;
         }
@@ -274,21 +280,54 @@ public class Database : IDatabase
                 sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE id = @id";
                 sqlCommand.Parameters.AddWithValue("@id", id);
 
+                DiscordLink? link = null;
+
                 using (var sqlReader = sqlCommand.ExecuteReader())
                 {
+                    if (sqlReader.HasRows)
+                    {
+                        sqlReader.Read();
+
+                        link = new DiscordLink(
+                            Id: sqlReader.GetInt32("id"),
+                            DiscordId: sqlReader.GetInt64("discord_id"),
+                            PlayerId: sqlReader.GetInt32("player_id")
+                        );
+                    
+                        sqlConnection.Close();
+                    }
+                    
+                }
+
+                if (link != null)
+                {
+                    return link;
+                }
+
+                sqlConnection = GetConnection();
+                sqlConnection.Open();
+                
+                sqlCommand = new MySqlCommand();
+                sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE player_id = @id";
+                sqlCommand.Parameters.AddWithValue("@id", id);
+                
+                using (var sqlReader = sqlCommand.ExecuteReader())
+                {
+                    if (!sqlReader.HasRows) return null;
                     sqlReader.Read();
 
-                    var link = new DiscordLink(
+                    link = new DiscordLink(
                         Id: sqlReader.GetInt32("id"),
-                        DiscordId: sqlReader.GetInt32("discord_id"),
+                        DiscordId: sqlReader.GetInt64("discord_id"),
                         PlayerId: sqlReader.GetInt32("player_id")
                     );
                     
                     sqlConnection.Close();
-                    
-                    return link;
-                    
+
                 }
+
+                return link;
+
             }
             catch (MySqlException exception)
             {

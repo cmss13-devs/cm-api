@@ -54,5 +54,6 @@ public record Player(
     IEnumerable<PlayerNote>? Notes,
     IEnumerable<PlayerJobBan>? JobBans,
     string? PermabanAdminCkey,
-    string? TimeBanAdminCkey
+    string? TimeBanAdminCkey,
+    long? DiscordId
     );
