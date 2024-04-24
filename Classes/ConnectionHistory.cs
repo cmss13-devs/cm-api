@@ -4,13 +4,13 @@ namespace CmApi.Classes;
 
 public class ConnectionHistory
 {
-    public List<LoginTriplet>? Triplets { get; set; }
+    public IEnumerable<LoginTriplet>? Triplets { get; set; }
     
     public List<string>? AllCkeys { get; set; }
     public List<string>? AllCids { get; set; }
     public List<string>? AllIps { get; set; }
     
-    public ConnectionHistory(List<LoginTriplet>? triplets = null, List<string>? ckeys = null, List<string>? cids = null, List<string>? ips = null)
+    public ConnectionHistory(IEnumerable<LoginTriplet>? triplets = null, List<string>? ckeys = null, List<string>? cids = null, List<string>? ips = null)
     {
         if (triplets == null)
         {

@@ -337,16 +337,10 @@ public class Database(IConfiguration configuration) : IDatabase
     {
         var allConnections = GetConnectionsByCkey(ckey);
 
-        var uniqueIps = new List<string>();
+        var uniqueIps = new HashSet<(int, int, int, int)>();
         foreach (var triplet in allConnections)
         {
-            var computedIp = $"{triplet.Ip1}.{triplet.Ip2}.{triplet.Ip3}.{triplet.Ip4}";
-            if (uniqueIps.Contains(computedIp))
-            {
-                continue;
-            }
-            
-            uniqueIps.Add(computedIp);
+            uniqueIps.Add((triplet.Ip1, triplet.Ip2, triplet.Ip3, triplet.Ip4));
         }
 
         if (uniqueIps.Count == 0)
@@ -354,25 +348,20 @@ public class Database(IConfiguration configuration) : IDatabase
             return [];
         }
 
-        var newTriplets = new List<LoginTriplet>();
-        var addedIds = new List<int>();
+        var command = new List<string>();
+
         foreach (var ip in uniqueIps)
         {
-            var newTrips = GetConnectionsByIp(ip);
-
-            foreach (var triplet in newTrips)
-            {
-                if (addedIds.Contains(triplet.Id))
-                {
-                    continue;
-                }
-                
-                addedIds.Add(triplet.Id);
-                newTriplets.Add(triplet);
-            }
+            command.Add($"(ip1 = {ip.Item1} AND ip2 = {ip.Item2} AND ip3 = {ip.Item3} AND ip4 = {ip.Item4})");
         }
 
-        return newTriplets;
+        var commandString = String.Join(" OR ", command);
+        
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @$"SELECT * FROM login_triplets WHERE {commandString}";
+
+        return AcquireTriplets(sqlCommand);
+
     }
     
     public List<LoginTriplet> GetConnectionsWithMatchingCidByCkey(string ckey)
