@@ -26,7 +26,7 @@ public class ConnectionsController : ControllerBase
         {
             return NotFound();
         }
-        return Ok(triplets);
+        return Ok(new ConnectionHistory(triplets));
     }
     
     [HttpGet]
@@ -39,6 +39,45 @@ public class ConnectionsController : ControllerBase
             return NotFound();
         }
 
-        return Ok(triplets);
+        return Ok(new ConnectionHistory(triplets));
+    }
+
+    [HttpGet]
+    [Route("Ckey")]
+    public IActionResult GetConnectionCkey(string ckey)
+    {
+        var triplets = _database.GetConnectionsByCkey(ckey);
+        if (triplets.Count == 0)
+        {
+            return NotFound();
+        }
+
+        return Ok(new ConnectionHistory(triplets));
+    }
+
+    [HttpGet]
+    [Route("FullByAllCid")]
+    public IActionResult GetConnectionsWithMatchingCidByCkey(string ckey)
+    {
+        var triplets = _database.GetConnectionsWithMatchingCidByCkey(ckey);
+        if (triplets.Count == 0)
+        {
+            return NotFound();
+        }
+
+        return Ok(new ConnectionHistory(triplets));
+    }
+    
+    [HttpGet]
+    [Route("FullByAllIp")]
+    public IActionResult GetConnectionsWithMatchingIpByCkey(string ckey)
+    {
+        var triplets = _database.GetConnectionsWithMatchingIpByCkey(ckey);
+        if (triplets.Count == 0)
+        {
+            return NotFound();
+        }
+
+        return Ok(new ConnectionHistory(triplets));
     }
 }

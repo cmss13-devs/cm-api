@@ -323,6 +323,85 @@ public class Database(IConfiguration configuration) : IDatabase
 
         return AcquireTriplets(sqlCommand);
     }
+    
+    public List<LoginTriplet> GetConnectionsByCkey(string ckey)
+    {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM login_triplets WHERE ckey = @ckey";
+        sqlCommand.Parameters.AddWithValue("@ckey", ckey);
+
+        return AcquireTriplets(sqlCommand);
+    }
+    
+    public List<LoginTriplet> GetConnectionsWithMatchingIpByCkey(string ckey)
+    {
+        var allConnections = GetConnectionsByCkey(ckey);
+
+        var uniqueIps = new List<string>();
+        foreach (var triplet in allConnections)
+        {
+            var computedIp = $"{triplet.Ip1}.{triplet.Ip2}.{triplet.Ip3}.{triplet.Ip4}";
+            if (uniqueIps.Contains(computedIp))
+            {
+                continue;
+            }
+            
+            uniqueIps.Add(computedIp);
+        }
+
+        if (uniqueIps.Count == 0)
+        {
+            return [];
+        }
+
+        var newTriplets = new List<LoginTriplet>();
+        var addedIds = new List<int>();
+        foreach (var ip in uniqueIps)
+        {
+            var newTrips = GetConnectionsByIp(ip);
+
+            foreach (var triplet in newTrips)
+            {
+                if (addedIds.Contains(triplet.Id))
+                {
+                    continue;
+                }
+                
+                addedIds.Add(triplet.Id);
+                newTriplets.Add(triplet);
+            }
+        }
+
+        return newTriplets;
+    }
+    
+    public List<LoginTriplet> GetConnectionsWithMatchingCidByCkey(string ckey)
+    {
+        var allConnections = GetConnectionsByCkey(ckey);
+
+        var uniqueCids = new List<string>();
+        foreach (var triplet in allConnections)
+        {
+            if (uniqueCids.Contains(triplet.LastKnownCid))
+            {
+                continue;
+            }
+            
+            uniqueCids.Add(triplet.LastKnownCid);
+        }
+
+        if (uniqueCids.Count == 0)
+        {
+            return [];
+        }
+
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM login_triplets WHERE FIND_IN_SET(last_known_cid, @cids)";
+        sqlCommand.Parameters.AddWithValue("@cids", string.Join(",", uniqueCids.ToArray()));
+
+        return AcquireTriplets(sqlCommand);
+
+    }
 
     private List<LoginTriplet> AcquireTriplets(MySqlCommand sqlCommand)
     {
@@ -397,6 +476,10 @@ public interface IDatabase
 
     List<LoginTriplet> GetConnectionsByCid(string cid);
     List<LoginTriplet> GetConnectionsByIp(string ip);
-    
+    List<LoginTriplet> GetConnectionsByCkey(string ckey);
+
+    List<LoginTriplet> GetConnectionsWithMatchingCidByCkey(string ckey);
+    List<LoginTriplet> GetConnectionsWithMatchingIpByCkey(string ckey);
+
     IEnumerable<PlayerNote>? GetPlayerNotes(int id);
 }
