@@ -69,7 +69,7 @@ public class ConnectionsController : ControllerBase
     }
     
     [HttpGet]
-    [Route("FullByAllIp")]
+    [Route("FullByAllIps")]
     public IActionResult GetConnectionsWithMatchingIpByCkey(string ckey)
     {
         var triplets = _database.GetConnectionsWithMatchingIpByCkey(ckey);
