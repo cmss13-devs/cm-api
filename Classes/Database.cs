@@ -5,6 +5,9 @@ namespace CmApi.Classes;
 
 public class Database(IConfiguration configuration) : IDatabase
 {
+
+    private IDictionary<int, string> _shallowCache = new Dictionary<int, string>();
+    
     /// <summary>
     /// Gets a user based on the ID.
     /// </summary>
@@ -45,6 +48,7 @@ public class Database(IConfiguration configuration) : IDatabase
 
                 if (!dataReader.HasRows)
                 {
+                    sqlConnection.Close();
                     return null;
                 }
                 
@@ -55,6 +59,7 @@ public class Database(IConfiguration configuration) : IDatabase
                 // if our player got made, but not actually by a player existing (ie, a note lookup)
                 if (dataReader.IsDBNull(dataReader.GetOrdinal("last_login")))
                 {
+                    sqlConnection.Close();
                     return null;
                 }
 
@@ -165,9 +170,9 @@ public class Database(IConfiguration configuration) : IDatabase
                     notes.Add(note);
                 }
                 
-                sqlConnection.Close();
             }
-
+            
+            sqlConnection.Close();
             return notes;
         }
         catch (MySqlException exception)
@@ -196,19 +201,24 @@ public class Database(IConfiguration configuration) : IDatabase
             while (sqlReader.Read())
             {
 
-                var banningAdminId = sqlReader.GetInt32("admin_id");
-                var banningAdmin = ShallowPlayerName(banningAdminId);
+                var banningAdminId = GetInt32NullSafe(sqlReader, "admin_id");
+                if (!banningAdminId.HasValue)
+                {
+                    continue;
+                }
+                
+                var banningAdminCkey = ShallowPlayerName(banningAdminId.Value);
                     
                 var ban = new PlayerJobBan(
                     Id: sqlReader.GetInt32("id"),
                     PlayerId: sqlReader.GetInt32("player_id"),
                     AdminId: banningAdminId,
                     Text: sqlReader.GetString("text"),
-                    Date: sqlReader.GetString("date"),
+                    Date: GetStringNullSafe(sqlReader, "date"),
                     BanTime: GetInt32NullSafe(sqlReader, "ban_time"),
                     Expiration: GetInt64NullSafe(sqlReader, "expiration"),
                     Role: sqlReader.GetString("role"),
-                    BanningAdminCkey: banningAdmin
+                    BanningAdminCkey: banningAdminCkey
                 );
                     
                 jobBans.Add(ban);
@@ -228,6 +238,14 @@ public class Database(IConfiguration configuration) : IDatabase
 
     private string? ShallowPlayerName(int id)
     {
+
+        string? cached;
+        _shallowCache.TryGetValue(id, out cached);
+        if (cached != null)
+        {
+            return cached;
+        }
+        
         try
         {
             var sqlConnection = GetConnection();
@@ -240,9 +258,16 @@ public class Database(IConfiguration configuration) : IDatabase
 
             using (var sqlReader = sqlCommand.ExecuteReader())
             {
+                if (!sqlReader.HasRows)
+                {
+                    sqlReader.Close();
+                    return null;
+                }
+                
                 sqlReader.Read();
                 var ckey = sqlReader.GetString("ckey");
                 sqlConnection.Close();
+                _shallowCache[id] = ckey;
                 return ckey;
             }
         }
@@ -279,10 +304,10 @@ public class Database(IConfiguration configuration) : IDatabase
                         PlayerId: sqlReader.GetInt32("player_id")
                     );
                 
-                    sqlConnection.Close();
                     
                 }
-
+                
+                sqlConnection.Close();
                 return link;
 
             }
@@ -311,7 +336,7 @@ public class Database(IConfiguration configuration) : IDatabase
 
         if (split.Length != 4)
         {
-            return new List<LoginTriplet>();
+            return [];
         }
         
         var sqlCommand = new MySqlCommand();
@@ -429,7 +454,163 @@ public class Database(IConfiguration configuration) : IDatabase
         }
 
         return new List<LoginTriplet>();
+    }
+    
+    public List<Stickyban> GetStickybans()
+    {
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
 
+            var sqlCommand = new MySqlCommand();
+            sqlCommand.Connection = sqlConnection;
+            sqlCommand.CommandText = @"SELECT * FROM stickyban WHERE active = 1";
+            
+            var stickybans = new List<Stickyban>();
+
+            using var sqlReader = sqlCommand.ExecuteReader();
+            while (sqlReader.Read())
+            {
+                stickybans.Add(ReadStickyban(sqlReader));
+            }
+            
+            sqlConnection.Close();
+            return stickybans;
+        }
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+
+        return [];
+    }
+
+    public List<StickybanMatchedCid> GetStickybanMatchedCids(int id)
+    {
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
+
+            var sqlCommand = new MySqlCommand();
+            sqlCommand.Connection = sqlConnection;
+            sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_cid WHERE linked_stickyban = @id";
+            sqlCommand.Parameters.AddWithValue("@id", id);
+            
+            var stickybans = new List<StickybanMatchedCid>();
+
+            using var sqlReader = sqlCommand.ExecuteReader();
+            while (sqlReader.Read())
+            {
+                stickybans.Add(new StickybanMatchedCid(
+                    Id: sqlReader.GetInt32("id"),
+                    Cid: sqlReader.GetString("cid"),
+                    LinkedStickyban: sqlReader.GetInt32("linked_stickyban")
+                    ));
+            }
+            
+            sqlConnection.Close();
+            return stickybans;
+        }
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+
+        return [];
+    }
+    
+    public List<StickybanMatchedCkey> GetStickybanMatchedCkeys(int id)
+    {
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
+
+            var sqlCommand = new MySqlCommand();
+            sqlCommand.Connection = sqlConnection;
+            sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_ckey WHERE linked_stickyban = @id";
+            sqlCommand.Parameters.AddWithValue("@id", id);
+            
+            var stickybans = new List<StickybanMatchedCkey>();
+
+            using var sqlReader = sqlCommand.ExecuteReader();
+            while (sqlReader.Read())
+            {
+                stickybans.Add(new StickybanMatchedCkey(
+                    Id: sqlReader.GetInt32("id"),
+                    Ckey: sqlReader.GetString("ckey"),
+                    LinkedStickyban: sqlReader.GetInt32("linked_stickyban"),
+                    Whitelisted: sqlReader.GetBoolean("whitelisted")
+                ));
+            }
+            
+            sqlConnection.Close();
+            return stickybans;
+        }
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+
+        return [];
+    }
+    
+    public List<StickybanMatchedIp> GetStickybanMatchedIps(int id)
+    {
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
+
+            var sqlCommand = new MySqlCommand();
+            sqlCommand.Connection = sqlConnection;
+            sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_ip WHERE linked_stickyban = @id";
+            sqlCommand.Parameters.AddWithValue("@id", id);
+            
+            var stickybans = new List<StickybanMatchedIp>();
+
+            using var sqlReader = sqlCommand.ExecuteReader();
+            while (sqlReader.Read())
+            {
+                stickybans.Add(new StickybanMatchedIp(
+                    Id: sqlReader.GetInt32("id"),
+                    Ip: sqlReader.GetString("ip"),
+                    LinkedStickyban: sqlReader.GetInt32("linked_stickyban")
+                ));
+            }
+            
+            sqlConnection.Close();
+            return stickybans;
+        }
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+
+        return [];
+    }
+
+    private Stickyban ReadStickyban(MySqlDataReader reader)
+    {
+        var adminId = GetInt32NullSafe(reader, "adminid");
+        string? adminCkey = null;
+        if (adminId.HasValue)
+        {
+            adminCkey = ShallowPlayerName(adminId.Value);
+        }
+                
+        return new Stickyban(
+            Id: reader.GetInt32("id"),
+            Identifier: reader.GetString("identifier"),
+            Reason: reader.GetString("reason"),
+            Message: reader.GetString("message"),
+            Date: reader.GetString("date"),
+            Active: reader.GetBoolean("active"),
+            AdminId: adminId,
+            AdminCkey: adminCkey
+        );
     }
 
     private MySqlConnection GetConnection()
@@ -469,6 +650,12 @@ public interface IDatabase
 
     List<LoginTriplet> GetConnectionsWithMatchingCidByCkey(string ckey);
     List<LoginTriplet> GetConnectionsWithMatchingIpByCkey(string ckey);
+
+    List<Stickyban> GetStickybans();
+
+    List<StickybanMatchedCid> GetStickybanMatchedCids(int id);
+    List<StickybanMatchedCkey> GetStickybanMatchedCkeys(int id);
+    List<StickybanMatchedIp> GetStickybanMatchedIps(int id);
 
     IEnumerable<PlayerNote>? GetPlayerNotes(int id);
 }

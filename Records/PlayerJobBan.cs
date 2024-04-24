@@ -3,9 +3,9 @@ namespace CmApi.Records;
 public record PlayerJobBan(
     int Id,
     int PlayerId,
-    int AdminId,
+    int? AdminId,
     string Text,
-    string Date,
+    string? Date,
     int? BanTime,
     long? Expiration,
     string Role,
