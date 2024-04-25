@@ -500,7 +500,7 @@ public class Database(IConfiguration configuration) : IDatabase
     private List<Stickyban> AcquireStickybansById(IEnumerable<int> ids)
     {
         var sqlCommand = new MySqlCommand();
-        sqlCommand.CommandText = @"SELECT * FROM stickyban WHERE FIND_IN_SET(id, @ids)";
+        sqlCommand.CommandText = @"SELECT * FROM stickyban WHERE FIND_IN_SET(id, @ids) AND active = 1";
         sqlCommand.Parameters.AddWithValue("@ids", string.Join(",", ids.ToArray()));
         
         return AcquireStickyban(sqlCommand);

@@ -8,10 +8,10 @@ namespace CmApi.Controllers;
 /// </summary>
 [ApiController]
 [Route("[controller]")]
+[OAuthFilter]
 public class AuthController(IByond byond) : ControllerBase
 {
     [HttpGet]
-    [OAuthFilter]
     public IActionResult IsAuthorized()
     {
         Request.Headers.TryGetValue("X-Forwarded-Preferred-Username", out var value);
