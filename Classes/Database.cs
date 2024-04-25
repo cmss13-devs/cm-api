@@ -1,13 +1,15 @@
+using System.Text.RegularExpressions;
 using CmApi.Records;
 using MySql.Data.MySqlClient;
 
 namespace CmApi.Classes;
 
-public class Database(IConfiguration configuration) : IDatabase
+public partial class Database(IConfiguration configuration) : IDatabase
 {
 
-    private IDictionary<int, string> _shallowCache = new Dictionary<int, string>();
-    
+    private IDictionary<int, string> _shallowCacheToCkey = new Dictionary<int, string>();
+    private IDictionary<string, int> _shallowCacheToId = new Dictionary<string, int>();
+
     /// <summary>
     /// Gets a user based on the ID.
     /// </summary>
@@ -87,9 +89,11 @@ public class Database(IConfiguration configuration) : IDatabase
 
                 var discordId = GetDiscordLink(gottenId)?.DiscordId;
 
+                var ckey = dataReader.GetString("ckey");
+
                 user = new Player(
                     Id: gottenId,
-                    Ckey: dataReader.GetString("ckey"),
+                    Ckey: ckey,
                     LastLogin: dataReader.GetString("last_login"),
                     IsPermabanned: isPermabanned,
                     PermabanReason: GetStringNullSafe(dataReader, "permaban_reason"),
@@ -116,6 +120,9 @@ public class Database(IConfiguration configuration) : IDatabase
                     TimeBanAdminCkey: timeBanAdmin,
                     DiscordId: discordId
                 );
+                
+                _shallowCacheToCkey[gottenId] = ckey;
+                _shallowCacheToId[ckey] = gottenId;
 
             }
             sqlConnection.Close();
@@ -240,7 +247,7 @@ public class Database(IConfiguration configuration) : IDatabase
     {
 
         string? cached;
-        _shallowCache.TryGetValue(id, out cached);
+        _shallowCacheToCkey.TryGetValue(id, out cached);
         if (cached != null)
         {
             return cached;
@@ -256,20 +263,63 @@ public class Database(IConfiguration configuration) : IDatabase
             sqlCommand.CommandText = @"SELECT ckey FROM players WHERE id = @id";
             sqlCommand.Parameters.AddWithValue("@id", id);
 
-            using (var sqlReader = sqlCommand.ExecuteReader())
+            using var sqlReader = sqlCommand.ExecuteReader();
+            if (!sqlReader.HasRows)
             {
-                if (!sqlReader.HasRows)
-                {
-                    sqlReader.Close();
-                    return null;
-                }
-                
-                sqlReader.Read();
-                var ckey = sqlReader.GetString("ckey");
-                sqlConnection.Close();
-                _shallowCache[id] = ckey;
-                return ckey;
+                sqlReader.Close();
+                return null;
             }
+                
+            sqlReader.Read();
+            var ckey = sqlReader.GetString("ckey");
+            sqlConnection.Close();
+            _shallowCacheToCkey[id] = ckey;
+            _shallowCacheToId[ckey] = id;
+            return ckey;
+        }
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+
+        return null;
+    }
+    
+    private int? ShallowPlayerId(string ckey)
+    {
+
+        // looked at opendream impl for this: https://github.com/OpenDreamProject/OpenDream/blob/ada468d5209809bbee8dddef68415730d13c7937/OpenDreamRuntime/Procs/Native/DreamProcNativeHelpers.cs#L407
+        ckey = CkeyRegex().Replace(ckey.ToLower(), "");
+        
+        var found = _shallowCacheToId.TryGetValue(ckey, out var cached);
+        if (found)
+        {
+            return cached;
+        }
+        
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
+
+            var sqlCommand = new MySqlCommand();
+            sqlCommand.Connection = sqlConnection;
+            sqlCommand.CommandText = @"SELECT id FROM players WHERE ckey = @ckey";
+            sqlCommand.Parameters.AddWithValue("@ckey", ckey);
+
+            using var sqlReader = sqlCommand.ExecuteReader();
+            if (!sqlReader.HasRows)
+            {
+                sqlReader.Close();
+                return null;
+            }
+                
+            sqlReader.Read();
+            var id = sqlReader.GetInt32("id");
+            sqlConnection.Close();
+            _shallowCacheToCkey[id] = ckey;
+            _shallowCacheToId[ckey] = id;
+            return id;
         }
         catch (MySqlException exception)
         {
@@ -722,6 +772,76 @@ public class Database(IConfiguration configuration) : IDatabase
         );
     }
 
+    public int StickybanWhitelistCkey(string ckey)
+    {
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
+
+            var sqlCommand = new MySqlCommand();
+            sqlCommand.Connection = sqlConnection;
+            sqlCommand.CommandText = @"UPDATE stickyban_matched_ckey SET whitelisted = 1 WHERE ckey = @ckey AND whitelisted = 0";
+            sqlCommand.Parameters.AddWithValue("@ckey", ckey);
+            
+            var rows = sqlCommand.ExecuteNonQuery();
+            sqlConnection.Close();
+
+            return rows;
+        }
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+
+        return 0;
+    }
+    
+    public bool CreateNote(string playerCkey, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false)
+    {
+        var playerId = ShallowPlayerId(playerCkey);
+        var adminId = ShallowPlayerId(adminCkey);
+
+        if (!adminId.HasValue || !playerId.HasValue)
+        {
+            return false;
+        }
+        
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
+
+            var sqlCommand = new MySqlCommand();
+            sqlCommand.Connection = sqlConnection;
+            sqlCommand.CommandText = 
+                """
+                INSERT INTO player_notes (player_id, admin_id, text, date, is_ban, is_confidential, admin_rank, note_category)
+                VALUES (@player_id, @admin_id, @text, @date, @is_ban, @is_confidential, @admin_rank, @note_category)
+                """;
+
+            sqlCommand.Parameters.AddWithValue("@player_id", playerId);
+            sqlCommand.Parameters.AddWithValue("@admin_id", adminId);
+            sqlCommand.Parameters.AddWithValue("@text", text);
+            sqlCommand.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-mm-dd hh:mm:ss"));
+            sqlCommand.Parameters.AddWithValue("@is_ban", isBan ? 1 : 0);
+            sqlCommand.Parameters.AddWithValue("@is_confidential", confidential ? 1 : 0);
+            sqlCommand.Parameters.AddWithValue("@admin_rank", "[cmdb]");
+            sqlCommand.Parameters.AddWithValue("@note_category", noteCategory);
+            
+            var rows = sqlCommand.ExecuteNonQuery();
+            sqlConnection.Close();
+
+            return rows > 0;
+        }
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+        
+        return true;
+    }
+
     private MySqlConnection GetConnection()
     {
         return new MySqlConnection(configuration.GetConnectionString("mysql"));
@@ -745,7 +865,9 @@ public class Database(IConfiguration configuration) : IDatabase
     {
         return reader.IsDBNull(reader.GetOrdinal(column)) ? null : reader.GetInt64(column);
     }
-    
+
+    [GeneratedRegex("[\\^]|[^a-z0-9@]")]
+    private static partial Regex CkeyRegex();
 }
 
 public interface IDatabase
@@ -769,6 +891,14 @@ public interface IDatabase
     List<StickybanMatchedCid> GetStickybanMatchedCids(int id);
     List<StickybanMatchedCkey> GetStickybanMatchedCkeys(int id);
     List<StickybanMatchedIp> GetStickybanMatchedIps(int id);
+    
+    List<StickybanMatchedCid> GetStickybanMatchedCidsByCid(string cid);
+    List<StickybanMatchedCkey> GetStickybanMatchedCkeysByCkey(string ckey);
+    List<StickybanMatchedIp> GetStickybanMatchedIpsByIp(string ip);
+
+    bool CreateNote(string playerCkey, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false);
+
+    int StickybanWhitelistCkey(string ckey);
     
 
     IEnumerable<PlayerNote>? GetPlayerNotes(int id);

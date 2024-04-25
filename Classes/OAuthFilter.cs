@@ -1,7 +1,6 @@
-using System.Net;
+using System.Security.Principal;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.Extensions.Primitives;
 
 namespace CmApi.Classes;
 
@@ -14,6 +13,22 @@ public class OAuthFilter : ActionFilterAttribute
         {
             filterContext.Result = new UnauthorizedObjectResult("User is unauthorized.");
         }
+
+        filterContext.HttpContext.User = new GenericPrincipal(new AuthenticatedUser(user.First() ?? string.Empty), []);
     }
 
+}
+
+public class AuthenticatedUser : IIdentity
+{
+    public string? AuthenticationType { get; }
+    public bool IsAuthenticated { get; }
+    public string? Name { get; }
+
+    public AuthenticatedUser(string name)
+    {
+        IsAuthenticated = true;
+        AuthenticationType = "Oauth";
+        Name = name;
+    }
 }

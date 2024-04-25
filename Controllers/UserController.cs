@@ -6,7 +6,6 @@ namespace CmApi.Controllers;
 /// <summary>
 /// <see cref="ControllerBase"/> for managing Users.
 /// </summary>
-[ApiController]
 [Route("[controller]")]
 public class UserController : ControllerBase
 {
@@ -50,5 +49,19 @@ public class UserController : ControllerBase
         }
 
         return Ok(user);
+    }
+
+    [HttpPost]
+    [Route("Note")]
+    [OAuthFilter]
+    public IActionResult AddPlayerNote(AddNoteRequest request)
+    {
+        var user = Request.HttpContext.User.Identity?.Name;
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+        
+        return Ok(_database.CreateNote(request.Ckey, user, request.Message, request.Confidential, request.Category));
     }
 }
