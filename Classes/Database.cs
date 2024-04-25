@@ -459,7 +459,7 @@ public class Database(IConfiguration configuration) : IDatabase
     public List<Stickyban> GetStickybans()
     {
         var sqlCommand = new MySqlCommand();
-        sqlCommand.CommandText = @"SELECT * FROM stickyban WHERE active = 1";
+        sqlCommand.CommandText = @"SELECT * FROM stickyban";
 
         return AcquireStickyban(sqlCommand);
     }
