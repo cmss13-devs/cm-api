@@ -458,18 +458,66 @@ public class Database(IConfiguration configuration) : IDatabase
     
     public List<Stickyban> GetStickybans()
     {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM stickyban WHERE active = 1";
+
+        return AcquireStickyban(sqlCommand);
+    }
+    
+    public List<Stickyban> GetStickybanWithMatchingCid(string cid)
+    {
+        var stickyIds = new HashSet<int>();
+        foreach (var stickybanMatch in GetStickybanMatchedCidsByCid(cid))
+        {
+            stickyIds.Add(stickybanMatch.LinkedStickyban);
+        }
+
+        return AcquireStickybansById(stickyIds);
+    }
+
+    public List<Stickyban> GetStickybanWithMatchingCkey(string ckey)
+    {
+        var stickyIds = new HashSet<int>();
+        foreach (var stickybanMatch in GetStickybanMatchedCkeysByCkey(ckey))
+        {
+            stickyIds.Add(stickybanMatch.LinkedStickyban);
+        }
+
+        return AcquireStickybansById(stickyIds);
+    }
+
+    public List<Stickyban> GetStickybanWithMatchingIp(string ip)
+    {
+        var stickyIds = new HashSet<int>();
+        foreach (var stickybanMatch in GetStickybanMatchedIpsByIp(ip))
+        {
+            stickyIds.Add(stickybanMatch.LinkedStickyban);
+        }
+
+        return AcquireStickybansById(stickyIds);
+    }
+
+    private List<Stickyban> AcquireStickybansById(IEnumerable<int> ids)
+    {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM stickyban WHERE FIND_IN_SET(id, @ids)";
+        sqlCommand.Parameters.AddWithValue("@ids", string.Join(",", ids.ToArray()));
+        
+        return AcquireStickyban(sqlCommand);
+    }
+    
+    private List<Stickyban> AcquireStickyban(MySqlCommand command)
+    {
         try
         {
             var sqlConnection = GetConnection();
             sqlConnection.Open();
 
-            var sqlCommand = new MySqlCommand();
-            sqlCommand.Connection = sqlConnection;
-            sqlCommand.CommandText = @"SELECT * FROM stickyban WHERE active = 1";
+            command.Connection = sqlConnection;
             
             var stickybans = new List<Stickyban>();
 
-            using var sqlReader = sqlCommand.ExecuteReader();
+            using var sqlReader = command.ExecuteReader();
             while (sqlReader.Read())
             {
                 stickybans.Add(ReadStickyban(sqlReader));
@@ -488,62 +536,74 @@ public class Database(IConfiguration configuration) : IDatabase
 
     public List<StickybanMatchedCid> GetStickybanMatchedCids(int id)
     {
-        try
-        {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_cid WHERE linked_stickyban = @id";
+        sqlCommand.Parameters.AddWithValue("@id", id);
 
-            var sqlCommand = new MySqlCommand();
-            sqlCommand.Connection = sqlConnection;
-            sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_cid WHERE linked_stickyban = @id";
-            sqlCommand.Parameters.AddWithValue("@id", id);
-            
-            var stickybans = new List<StickybanMatchedCid>();
-
-            using var sqlReader = sqlCommand.ExecuteReader();
-            while (sqlReader.Read())
-            {
-                stickybans.Add(new StickybanMatchedCid(
-                    Id: sqlReader.GetInt32("id"),
-                    Cid: sqlReader.GetString("cid"),
-                    LinkedStickyban: sqlReader.GetInt32("linked_stickyban")
-                    ));
-            }
-            
-            sqlConnection.Close();
-            return stickybans;
-        }
-        catch (MySqlException exception)
-        {
-            Console.Error.WriteLine(exception.ToString());
-        }
-
-        return [];
+        return AcquireStickybanMatchedCid(sqlCommand);
     }
     
     public List<StickybanMatchedCkey> GetStickybanMatchedCkeys(int id)
     {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_ckey WHERE linked_stickyban = @id";
+        sqlCommand.Parameters.AddWithValue("@id", id);
+
+        return AcquireStickybanMatchedCkey(sqlCommand);
+
+    }
+    
+    public List<StickybanMatchedIp> GetStickybanMatchedIps(int id)
+    {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_ip WHERE linked_stickyban = @id";
+        sqlCommand.Parameters.AddWithValue("@id", id);
+
+        return AcquireStickybanMatchedIp(sqlCommand);
+    }
+
+    public List<StickybanMatchedCid> GetStickybanMatchedCidsByCid(string cid)
+    {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_cid WHERE cid = @cid";
+        sqlCommand.Parameters.AddWithValue("@cid", cid);
+
+        return AcquireStickybanMatchedCid(sqlCommand);
+    }
+    
+    public List<StickybanMatchedCkey> GetStickybanMatchedCkeysByCkey(string ckey)
+    {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_ckey WHERE ckey = @ckey AND whitelisted = 0";
+        sqlCommand.Parameters.AddWithValue("@ckey", ckey);
+
+        return AcquireStickybanMatchedCkey(sqlCommand);
+    }
+    
+    public List<StickybanMatchedIp> GetStickybanMatchedIpsByIp(string ip)
+    {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_ip WHERE ip = @ip";
+        sqlCommand.Parameters.AddWithValue("@ip", ip);
+
+        return AcquireStickybanMatchedIp(sqlCommand);
+    }
+
+    private List<StickybanMatchedCid> AcquireStickybanMatchedCid(MySqlCommand command)
+    {
         try
         {
             var sqlConnection = GetConnection();
             sqlConnection.Open();
 
-            var sqlCommand = new MySqlCommand();
-            sqlCommand.Connection = sqlConnection;
-            sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_ckey WHERE linked_stickyban = @id";
-            sqlCommand.Parameters.AddWithValue("@id", id);
+            command.Connection = sqlConnection;
             
-            var stickybans = new List<StickybanMatchedCkey>();
+            var stickybans = new List<StickybanMatchedCid>();
 
-            using var sqlReader = sqlCommand.ExecuteReader();
+            using var sqlReader = command.ExecuteReader();
             while (sqlReader.Read())
             {
-                stickybans.Add(new StickybanMatchedCkey(
-                    Id: sqlReader.GetInt32("id"),
-                    Ckey: sqlReader.GetString("ckey"),
-                    LinkedStickyban: sqlReader.GetInt32("linked_stickyban"),
-                    Whitelisted: sqlReader.GetBoolean("whitelisted")
-                ));
+                stickybans.Add(ReadStickybanMatchedCid(sqlReader));
             }
             
             sqlConnection.Close();
@@ -557,28 +617,49 @@ public class Database(IConfiguration configuration) : IDatabase
         return [];
     }
     
-    public List<StickybanMatchedIp> GetStickybanMatchedIps(int id)
+    private List<StickybanMatchedCkey> AcquireStickybanMatchedCkey(MySqlCommand command)
     {
         try
         {
             var sqlConnection = GetConnection();
             sqlConnection.Open();
 
-            var sqlCommand = new MySqlCommand();
-            sqlCommand.Connection = sqlConnection;
-            sqlCommand.CommandText = @"SELECT * FROM stickyban_matched_ip WHERE linked_stickyban = @id";
-            sqlCommand.Parameters.AddWithValue("@id", id);
+            command.Connection = sqlConnection;
+            
+            var stickybans = new List<StickybanMatchedCkey>();
+
+            using var sqlReader = command.ExecuteReader();
+            while (sqlReader.Read())
+            {
+                stickybans.Add(ReadStickybanMatchedCkey(sqlReader));
+            }
+            
+            sqlConnection.Close();
+            return stickybans;
+        }
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+
+        return [];
+    }
+    
+    private List<StickybanMatchedIp> AcquireStickybanMatchedIp(MySqlCommand command)
+    {
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
+
+            command.Connection = sqlConnection;
             
             var stickybans = new List<StickybanMatchedIp>();
 
-            using var sqlReader = sqlCommand.ExecuteReader();
+            using var sqlReader = command.ExecuteReader();
             while (sqlReader.Read())
             {
-                stickybans.Add(new StickybanMatchedIp(
-                    Id: sqlReader.GetInt32("id"),
-                    Ip: sqlReader.GetString("ip"),
-                    LinkedStickyban: sqlReader.GetInt32("linked_stickyban")
-                ));
+                stickybans.Add(ReadStickybanMatchedIp(sqlReader));
             }
             
             sqlConnection.Close();
@@ -610,6 +691,34 @@ public class Database(IConfiguration configuration) : IDatabase
             Active: reader.GetBoolean("active"),
             AdminId: adminId,
             AdminCkey: adminCkey
+        );
+    }
+
+    private StickybanMatchedCid ReadStickybanMatchedCid(MySqlDataReader reader)
+    {
+        return new StickybanMatchedCid(
+            Id: reader.GetInt32("id"),
+            Cid: reader.GetString("cid"),
+            LinkedStickyban: reader.GetInt32("linked_stickyban")
+        );
+    }
+
+    private StickybanMatchedCkey ReadStickybanMatchedCkey(MySqlDataReader reader)
+    {
+        return new StickybanMatchedCkey(
+            Id: reader.GetInt32("id"),
+            Ckey: reader.GetString("ckey"),
+            LinkedStickyban: reader.GetInt32("linked_stickyban"),
+            Whitelisted: reader.GetBoolean("whitelisted")
+        );
+    }
+
+    private StickybanMatchedIp ReadStickybanMatchedIp(MySqlDataReader reader)
+    {
+        return new StickybanMatchedIp(
+            Id: reader.GetInt32("id"),
+            Ip: reader.GetString("ip"),
+            LinkedStickyban: reader.GetInt32("linked_stickyban")
         );
     }
 
@@ -653,9 +762,14 @@ public interface IDatabase
 
     List<Stickyban> GetStickybans();
 
+    List<Stickyban> GetStickybanWithMatchingCid(string cid);
+    List<Stickyban> GetStickybanWithMatchingCkey(string ckey);
+    List<Stickyban> GetStickybanWithMatchingIp(string ip);
+
     List<StickybanMatchedCid> GetStickybanMatchedCids(int id);
     List<StickybanMatchedCkey> GetStickybanMatchedCkeys(int id);
     List<StickybanMatchedIp> GetStickybanMatchedIps(int id);
+    
 
     IEnumerable<PlayerNote>? GetPlayerNotes(int id);
 }
