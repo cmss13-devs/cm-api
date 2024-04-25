@@ -14,7 +14,8 @@ public class AuthController(IByond byond) : ControllerBase
     [OAuthFilter]
     public IActionResult IsAuthorized()
     {
-        return Ok();
+        Request.Headers.TryGetValue("X-Forwarded-Preferred-Username", out var value);
+        return Ok(value.First());
     }
 
 
