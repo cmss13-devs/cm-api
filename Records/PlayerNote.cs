@@ -4,7 +4,7 @@ public record PlayerNote(
     int Id,
     int PlayerId,
     int AdminId,
-    string Text,
+    string? Text,
     string Date,
     bool IsBan,
     long? BanTime,
@@ -14,5 +14,6 @@ public record PlayerNote(
     int? RoundId,
     
     // computed in API
+    string? NotedPlayerCkey,
     string? NotingAdminCkey
     );

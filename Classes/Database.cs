@@ -67,7 +67,6 @@ public partial class Database(IConfiguration configuration) : IDatabase
 
                 var notes = GetPlayerNotes(gottenId);
                 var bans = GetPlayerJobBans(gottenId);
-
                 
                 string? permabanningAdmin = null;
                 
@@ -138,17 +137,32 @@ public partial class Database(IConfiguration configuration) : IDatabase
         return null;
     }
 
-    public IEnumerable<PlayerNote>? GetPlayerNotes(int id)
+    public IEnumerable<PlayerNote> GetPlayerNotes(int id)
+    {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM player_notes WHERE player_id = @id";
+        sqlCommand.Parameters.AddWithValue("@id", id);
+
+        return AcquirePlayerNotes(sqlCommand);
+    }
+
+    public IEnumerable<PlayerNote> GetAppliedPlayerNotes(int id)
+    {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = @"SELECT * FROM player_notes WHERE admin_id = @id";
+        sqlCommand.Parameters.AddWithValue("@id", id);
+
+        return AcquirePlayerNotes(sqlCommand); 
+    }
+
+    private IEnumerable<PlayerNote> AcquirePlayerNotes(MySqlCommand sqlCommand)
     {
         try
         {
             var sqlConnection = GetConnection();
             sqlConnection.Open();
 
-            var sqlCommand = new MySqlCommand();
             sqlCommand.Connection = sqlConnection;
-            sqlCommand.CommandText = @"SELECT * FROM player_notes WHERE player_id = @id";
-            sqlCommand.Parameters.AddWithValue("@id", id);
 
             var notes = new List<PlayerNote>();
 
@@ -158,12 +172,15 @@ public partial class Database(IConfiguration configuration) : IDatabase
                 {
                     var notingAdminId = sqlReader.GetInt32("admin_id");
                     var notingAdmin = ShallowPlayerName(notingAdminId);
+
+                    var notedPlayerId = sqlReader.GetInt32("player_id");
+                    var notedPlayer = ShallowPlayerName(notedPlayerId);
                     
                     var note = new PlayerNote(
                         Id: sqlReader.GetInt32("id"),
-                        PlayerId: sqlReader.GetInt32("player_id"),
+                        PlayerId: notedPlayerId,
                         AdminId: notingAdminId,
-                        Text: sqlReader.GetString("text"),
+                        Text: GetStringNullSafe(sqlReader, "text"),
                         Date: sqlReader.GetString("date"),
                         IsBan: sqlReader.GetBoolean("is_ban"),
                         BanTime: GetInt64NullSafe(sqlReader, "ban_time"),
@@ -171,6 +188,7 @@ public partial class Database(IConfiguration configuration) : IDatabase
                         AdminRank: sqlReader.GetString("admin_rank"),
                         NoteCategory: GetInt32NullSafe(sqlReader, "note_category"),
                         RoundId: GetInt32NullSafe(sqlReader, "round_id"),
+                        NotedPlayerCkey: notedPlayer,
                         NotingAdminCkey: notingAdmin
                     );
 
@@ -187,7 +205,7 @@ public partial class Database(IConfiguration configuration) : IDatabase
             Console.Error.WriteLine(exception.ToString());
         }
 
-        return null;
+        return [];
     }
 
     public IEnumerable<PlayerJobBan>? GetPlayerJobBans(int id)
@@ -797,12 +815,23 @@ public partial class Database(IConfiguration configuration) : IDatabase
         return 0;
     }
     
-    public bool CreateNote(string playerCkey, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false)
+    public bool CreateNote(string ckey, string adminCkey, string text, bool confidential = false, int noteCategory = 1,
+        bool isBan = false)
     {
-        var playerId = ShallowPlayerId(playerCkey);
+        var playerId = ShallowPlayerId(ckey);
+        if (!playerId.HasValue)
+        {
+            return false;
+        }
+
+        return CreateNote(playerId.Value, adminCkey, text, confidential, noteCategory, isBan);
+    }
+    
+    public bool CreateNote(int playerId, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false)
+    {
         var adminId = ShallowPlayerId(adminCkey);
 
-        if (!adminId.HasValue || !playerId.HasValue)
+        if (!adminId.HasValue)
         {
             return false;
         }
@@ -896,10 +925,13 @@ public interface IDatabase
     List<StickybanMatchedCkey> GetStickybanMatchedCkeysByCkey(string ckey);
     List<StickybanMatchedIp> GetStickybanMatchedIpsByIp(string ip);
 
-    bool CreateNote(string playerCkey, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false);
+    bool CreateNote(int playerId, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false);
+    bool CreateNote(string ckey, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false);
+
 
     int StickybanWhitelistCkey(string ckey);
     
 
-    IEnumerable<PlayerNote>? GetPlayerNotes(int id);
+    IEnumerable<PlayerNote> GetPlayerNotes(int id);
+    IEnumerable<PlayerNote> GetAppliedPlayerNotes(int id);
 }

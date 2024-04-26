@@ -10,11 +10,6 @@ namespace CmApi.Classes;
 public class AddNoteRequest
 {
     /// <summary>
-    /// The CKEY that this note will be attached to.
-    /// </summary>
-    public required string Ckey { get; set; }
-    
-    /// <summary>
     /// The message that appears on this note.
     /// </summary>
     public required string Message { get; set; }

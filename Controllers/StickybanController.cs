@@ -17,13 +17,6 @@ public class StickybanController(IDatabase database) : ControllerBase
         return Ok(database.GetStickybans());
     }
 
-    [HttpGet]
-    [Route("Match/Cid")]
-    public IActionResult GetMatchingCids(int id)
-    {
-        return Ok(database.GetStickybanMatchedCids(id));
-    }
-
     [HttpPost]
     [Route("Whitelist")]
     [OAuthFilter]
@@ -33,8 +26,17 @@ public class StickybanController(IDatabase database) : ControllerBase
         {
             return Unauthorized();
         }
+
         database.CreateNote(ckey, User.Identity.Name, "User was whitelisted against all stickybans.", true);
         return Ok(database.StickybanWhitelistCkey(ckey));
+    }
+
+    
+    [HttpGet]
+    [Route("Match/Cid")]
+    public IActionResult GetMatchingCids(int id)
+    {
+        return Ok(database.GetStickybanMatchedCids(id));
     }
 
     [HttpGet]

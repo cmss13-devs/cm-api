@@ -8,6 +8,7 @@ public class OAuthFilter : ActionFilterAttribute
 {
     public override void OnActionExecuting(ActionExecutingContext filterContext)
     {
+        
         filterContext.HttpContext.Request.Headers.TryGetValue("X-Forwarded-Preferred-Username", out var user);
         if (user.Count == 0)
         {

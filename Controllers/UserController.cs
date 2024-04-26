@@ -17,29 +17,11 @@ public class UserController : ControllerBase
     }
     
     /// <summary>
-    /// Gets a user from the database.
-    /// </summary>
-    /// <param name="id">The ID of the user to look up.</param>
-    /// <returns>The <see cref="IActionResult"/> of the request.</returns>
-    /// <response code="404">The requested user could not be found.</response>
-    [HttpGet]
-    public IActionResult GetUser(int id)
-    {
-        var user = _database.GetPlayer(id);
-        if (user == null)
-        {
-            return NotFound();
-        }
-        return Ok(user);
-    }
-
-    /// <summary>
     /// Gets a <see cref="Records.Player"/> from the database from their Ckey.
     /// </summary>
     /// <param name="ckey">The Ckey of the user to look up.</param>
     /// <returns></returns>
     [HttpGet]
-    [Route("Ckey")]
     public IActionResult GetUserCkey(string ckey)
     {
         var user = _database.GetPlayer(ckey);
@@ -50,11 +32,29 @@ public class UserController : ControllerBase
 
         return Ok(user);
     }
-
+    
+    /// <summary>
+    /// Gets a user from the database.
+    /// </summary>
+    /// <param name="id">The ID of the user to look up.</param>
+    /// <returns>The <see cref="IActionResult"/> of the request.</returns>
+    /// <response code="404">The requested user could not be found.</response>
+    [HttpGet]
+    [Route("{id:int}")]
+    public IActionResult GetUser(int id)
+    {
+        var user = _database.GetPlayer(id);
+        if (user == null)
+        {
+            return NotFound();
+        }
+        return Ok(user);
+    }
+    
     [HttpPost]
-    [Route("Note")]
+    [Route("{id:int}/Note")]
     [OAuthFilter]
-    public IActionResult AddPlayerNote(AddNoteRequest request)
+    public IActionResult AddPlayerNote(int id, AddNoteRequest request)
     {
         var user = Request.HttpContext.User.Identity?.Name;
         if (user == null)
@@ -62,6 +62,13 @@ public class UserController : ControllerBase
             return Unauthorized();
         }
         
-        return Ok(_database.CreateNote(request.Ckey, user, request.Message, request.Confidential, request.Category));
+        return Ok(_database.CreateNote(id, user, request.Message, request.Confidential, request.Category));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/AppliedNotes")]
+    public IActionResult CheckAppliedNotes(int id)
+    {
+        return Ok(_database.GetAppliedPlayerNotes(id));
     }
 }
