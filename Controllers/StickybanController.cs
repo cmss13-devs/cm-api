@@ -42,21 +42,21 @@ public class StickybanController(IDatabase database, IExternalLogger externalLog
 
     
     [HttpGet]
-    [Route("Match/Cid")]
+    [Route("${id:int}/Match/Cid")]
     public IActionResult GetMatchingCids(int id)
     {
         return Ok(database.GetStickybanMatchedCids(id));
     }
 
     [HttpGet]
-    [Route("Match/Ckey")]
+    [Route("${id:int}/Match/Ckey")]
     public IActionResult GetMatchingCkey(int id)
     {
         return Ok(database.GetStickybanMatchedCkeys(id));
     }
     
     [HttpGet]
-    [Route("Match/Ip")]
+    [Route("${id:int}/Match/Ip")]
     public IActionResult GetMatchingIps(int id)
     {
         return Ok(database.GetStickybanMatchedIps(id));
