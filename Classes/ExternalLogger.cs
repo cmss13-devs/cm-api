@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Google.Protobuf.WellKnownTypes;
+// ReSharper disable InconsistentNaming
 
 namespace CmApi.Classes;
 
@@ -24,7 +25,6 @@ public class ExternalLogger(IConfiguration configuration) : IExternalLogger
         {
             return;
         }
-
         using var sender = new HttpClient();
         var embed = new WebhookEmbed
         {
@@ -79,7 +79,6 @@ public class WebhookEmbed
     public EmbedImage? image { get; set; }
     public EmbedThumbnail? thumbnail { get; set; }
     public EmbedVideo? video { get; set; }
-    public EmbedProvider? provider { get; set; }
     public EmbedAuthor? author { get; set; }
     public IEnumerable<EmbedField>? fields { get; set; }
 }
@@ -115,23 +114,38 @@ public class EmbedVideo
     public int? width { get; set; }
 }
 
-public class EmbedProvider
-{
-    public string? name { get; set; }
-    public string? url { get; set; }
-}
-
 public class EmbedAuthor
 {
-    public string name { get; set; }
+    /// <summary>
+    /// The name of the author of this embed.
+    /// </summary>
+    public required string name { get; set; }
+    /// <summary>
+    /// The URL that will be linked to.
+    /// </summary>
     public string? url { get; set; }
+    /// <summary>
+    /// This will appear as the profile picture of the user.
+    /// </summary>
     public string? icon_url { get; set; }
+    /// <summary>
+    /// Proxy URL.
+    /// </summary>
     public string? proxy_icon_url { get; set; }
 }
 
 public class EmbedField
 {
+    /// <summary>
+    /// The key of the field.
+    /// </summary>
     public string name { get; set; }
+    /// <summary>
+    /// The value of the field.
+    /// </summary>
     public string value { get; set; }
+    /// <summary>
+    /// If this should appear in line or not.
+    /// </summary>
     public bool? inline { get; set; }
 }

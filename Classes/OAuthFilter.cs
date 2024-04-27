@@ -8,6 +8,14 @@ public class OAuthFilter : ActionFilterAttribute
 {
     public override void OnActionExecuting(ActionExecutingContext filterContext)
     {
+
+        var config = filterContext.HttpContext.RequestServices.GetService<IConfiguration>();
+
+        if (!string.IsNullOrEmpty(config?.GetSection("Debug")["SkipAuth"]))
+        {
+            filterContext.HttpContext.User = new GenericPrincipal(new AuthenticatedUser("adminbot"), []);
+            return;
+        };
         
         filterContext.HttpContext.Request.Headers.TryGetValue("X-Forwarded-Preferred-Username", out var user);
         if (user.Count == 0)
@@ -20,16 +28,9 @@ public class OAuthFilter : ActionFilterAttribute
 
 }
 
-public class AuthenticatedUser : IIdentity
+public class AuthenticatedUser(string name) : IIdentity
 {
-    public string? AuthenticationType { get; }
-    public bool IsAuthenticated { get; }
-    public string? Name { get; }
-
-    public AuthenticatedUser(string name)
-    {
-        IsAuthenticated = true;
-        AuthenticationType = "Oauth";
-        Name = name;
-    }
+    public string? AuthenticationType { get; } = "Oauth";
+    public bool IsAuthenticated { get; } = true;
+    public string? Name { get; } = name;
 }
