@@ -9,7 +9,7 @@ namespace CmApi.Controllers;
 /// </summary>
 [ApiController]
 [Route("[controller]")]
-public class StickybanController(IDatabase database) : ControllerBase
+public class StickybanController(IDatabase database, IExternalLogger externalLogger) : ControllerBase
 {
     [HttpGet]
     public IActionResult GetAllBans()
@@ -22,13 +22,22 @@ public class StickybanController(IDatabase database) : ControllerBase
     [OAuthFilter]
     public IActionResult WhitelistCkey(string ckey)
     {
-        if (User.Identity?.Name == null)
+        var adminCkey = User.Identity?.Name;
+        if (adminCkey == null)
         {
             return Unauthorized();
         }
 
-        database.CreateNote(ckey, User.Identity.Name, "User was whitelisted against all stickybans.", true);
-        return Ok(database.StickybanWhitelistCkey(ckey));
+        var stickybans = database.StickybanWhitelistCkey(ckey);
+
+        if (stickybans <= 0)
+        {
+            return Ok(stickybans);
+        }
+
+        externalLogger.LogExternal("Player Whitelisted", $"{adminCkey} whitelisted {ckey} against all matching stickybans.");
+        database.CreateNote(ckey, adminCkey, "User was whitelisted against all stickybans.", true);
+        return Ok(stickybans);
     }
 
     

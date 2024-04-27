@@ -8,6 +8,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
 builder.Services.AddSingleton<IDatabase, Database>();
 builder.Services.AddSingleton<IByond, CmApi.Classes.Byond>();
+builder.Services.AddScoped<IExternalLogger, ExternalLogger>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: "cors", policy =>

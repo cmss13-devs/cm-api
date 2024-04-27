@@ -261,7 +261,7 @@ public partial class Database(IConfiguration configuration) : IDatabase
         return null;
     }
 
-    private string? ShallowPlayerName(int id)
+    public string? ShallowPlayerName(int id)
     {
 
         string? cached;
@@ -303,7 +303,7 @@ public partial class Database(IConfiguration configuration) : IDatabase
         return null;
     }
     
-    private int? ShallowPlayerId(string ckey)
+    public int? ShallowPlayerId(string ckey)
     {
 
         // looked at opendream impl for this: https://github.com/OpenDreamProject/OpenDream/blob/ada468d5209809bbee8dddef68415730d13c7937/OpenDreamRuntime/Procs/Native/DreamProcNativeHelpers.cs#L407
@@ -924,6 +924,9 @@ public interface IDatabase
     List<StickybanMatchedCid> GetStickybanMatchedCidsByCid(string cid);
     List<StickybanMatchedCkey> GetStickybanMatchedCkeysByCkey(string ckey);
     List<StickybanMatchedIp> GetStickybanMatchedIpsByIp(string ip);
+
+    string? ShallowPlayerName(int id);
+    int? ShallowPlayerId(string ckey);
 
     bool CreateNote(int playerId, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false);
     bool CreateNote(string ckey, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false);

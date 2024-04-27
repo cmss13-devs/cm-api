@@ -10,10 +10,12 @@ namespace CmApi.Controllers;
 public class UserController : ControllerBase
 {
     private readonly IDatabase _database;
+    private readonly IExternalLogger _externalLogger;
 
-    public UserController(IDatabase database)
+    public UserController(IDatabase database, IExternalLogger externalLogger)
     {
         _database = database;
+        _externalLogger = externalLogger;
     }
     
     /// <summary>
@@ -56,12 +58,19 @@ public class UserController : ControllerBase
     [OAuthFilter]
     public IActionResult AddPlayerNote(int id, AddNoteRequest request)
     {
-        var user = Request.HttpContext.User.Identity?.Name;
+        var user = User.Identity?.Name;
         if (user == null)
         {
             return Unauthorized();
         }
+
+        var toNote = _database.ShallowPlayerName(id);
+        if (string.IsNullOrEmpty(toNote))
+        {
+            return NotFound();
+        }
         
+        _externalLogger.LogExternal("Note Added", $"{user} added a note to {toNote}: {request.Message}");
         return Ok(_database.CreateNote(id, user, request.Message, request.Confidential, request.Category));
     }
 
