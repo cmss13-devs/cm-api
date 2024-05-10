@@ -19,10 +19,10 @@ builder.Services.AddCors(options =>
     });
 });
 
-var info = new OpenApiInfo()
+var info = new OpenApiInfo
 {
     Title = "CM-API",
-    Version = "v1",
+    Version = "v1"
 };
 
 builder.Services.AddSwaggerGen(c =>

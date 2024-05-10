@@ -86,7 +86,7 @@ public partial class Database(IConfiguration configuration) : IDatabase
                     timeBanAdmin = ShallowPlayerName(timebanAdminId.Value);
                 }
 
-                var discordId = GetDiscordLink(gottenId)?.DiscordId;
+                var discordId = GetDiscordLink(gottenId)?.DiscordId.ToString();
 
                 var ckey = dataReader.GetString("ckey");
 
@@ -750,44 +750,46 @@ public partial class Database(IConfiguration configuration) : IDatabase
             adminCkey = ShallowPlayerName(adminId.Value);
         }
                 
-        return new Stickyban(
-            Id: reader.GetInt32("id"),
-            Identifier: reader.GetString("identifier"),
-            Reason: reader.GetString("reason"),
-            Message: reader.GetString("message"),
-            Date: reader.GetString("date"),
-            Active: reader.GetBoolean("active"),
-            AdminId: adminId,
-            AdminCkey: adminCkey
-        );
+        return new Stickyban
+        {
+            Id = reader.GetInt32("id"),
+            Identifier = reader.GetString("identifier"),
+            Reason = reader.GetString("reason"),
+            Message = reader.GetString("message"),
+            Date = reader.GetString("date"),
+            Active = reader.GetBoolean("active"),
+            AdminId = adminId,
+            AdminCkey = adminCkey
+        };
     }
 
     private StickybanMatchedCid ReadStickybanMatchedCid(MySqlDataReader reader)
     {
-        return new StickybanMatchedCid(
-            Id: reader.GetInt32("id"),
-            Cid: reader.GetString("cid"),
-            LinkedStickyban: reader.GetInt32("linked_stickyban")
-        );
+        return new StickybanMatchedCid
+        {
+            Id = reader.GetInt32("id"),
+            Cid = reader.GetString("cid"),
+            LinkedStickyban = reader.GetInt32("linked_stickyban")
+        };
     }
 
     private StickybanMatchedCkey ReadStickybanMatchedCkey(MySqlDataReader reader)
     {
-        return new StickybanMatchedCkey(
-            Id: reader.GetInt32("id"),
-            Ckey: reader.GetString("ckey"),
-            LinkedStickyban: reader.GetInt32("linked_stickyban"),
-            Whitelisted: reader.GetBoolean("whitelisted")
-        );
+        return new StickybanMatchedCkey{
+            Id = reader.GetInt32("id"),
+            Ckey = reader.GetString("ckey"),
+            LinkedStickyban = reader.GetInt32("linked_stickyban"),
+            Whitelisted = reader.GetBoolean("whitelisted")
+        };
     }
 
     private StickybanMatchedIp ReadStickybanMatchedIp(MySqlDataReader reader)
     {
-        return new StickybanMatchedIp(
-            Id: reader.GetInt32("id"),
-            Ip: reader.GetString("ip"),
-            LinkedStickyban: reader.GetInt32("linked_stickyban")
-        );
+        return new StickybanMatchedIp{
+            Id = reader.GetInt32("id"),
+            Ip = reader.GetString("ip"),
+            LinkedStickyban = reader.GetInt32("linked_stickyban")
+        };
     }
 
     public int StickybanWhitelistCkey(string ckey)
@@ -871,6 +873,50 @@ public partial class Database(IConfiguration configuration) : IDatabase
         return true;
     }
 
+    public List<Ticket> GetRecentTickets()
+    {
+        return [];
+    }
+
+    private List<Ticket> AcquireTicket(MySqlCommand command)
+    {
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
+
+            command.Connection = sqlConnection;
+            
+            var tickets = new List<Ticket>();
+
+            using var sqlReader = command.ExecuteReader();
+            while (sqlReader.Read())
+            {
+                tickets.Add(new Ticket
+                {
+                    Id = sqlReader.GetInt32("id"),
+                    TicketId = sqlReader.GetInt32("ticket"),
+                    Action = sqlReader.GetString("action"),
+                    Message = sqlReader.GetString("message"),
+                    Recipient = GetStringNullSafe(sqlReader, "recipient"),
+                    Sender = sqlReader.GetString("sender"),
+                    RoundId = GetInt32NullSafe(sqlReader, "round_id"),
+                    Time = sqlReader.GetDateTime("time"),
+                    Urgent = sqlReader.GetBoolean("urgent")
+                });
+            }
+            
+            sqlConnection.Close();
+            return tickets;
+        }
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+
+        return [];
+    }
+
     private MySqlConnection GetConnection()
     {
         return new MySqlConnection(configuration.GetConnectionString("mysql"));
@@ -931,7 +977,8 @@ public interface IDatabase
     bool CreateNote(int playerId, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false);
     bool CreateNote(string ckey, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false);
 
-
+    List<Ticket> GetRecentTickets();
+    
     int StickybanWhitelistCkey(string ckey);
     
 

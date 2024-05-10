@@ -55,5 +55,5 @@ public record Player(
     IEnumerable<PlayerJobBan>? JobBans,
     string? PermabanAdminCkey,
     string? TimeBanAdminCkey,
-    long? DiscordId
+    string? DiscordId
     );
