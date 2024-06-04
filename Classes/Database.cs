@@ -854,7 +854,7 @@ public partial class Database(IConfiguration configuration) : IDatabase
             sqlCommand.Parameters.AddWithValue("@player_id", playerId);
             sqlCommand.Parameters.AddWithValue("@admin_id", adminId);
             sqlCommand.Parameters.AddWithValue("@text", text);
-            sqlCommand.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-mm-dd hh:mm:ss"));
+            sqlCommand.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"));
             sqlCommand.Parameters.AddWithValue("@is_ban", isBan ? 1 : 0);
             sqlCommand.Parameters.AddWithValue("@is_confidential", confidential ? 1 : 0);
             sqlCommand.Parameters.AddWithValue("@admin_rank", "[cmdb]");
