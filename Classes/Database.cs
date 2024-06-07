@@ -86,7 +86,7 @@ public partial class Database(IConfiguration configuration) : IDatabase
                     timeBanAdmin = ShallowPlayerName(timebanAdminId.Value);
                 }
 
-                var discordId = GetDiscordLink(gottenId)?.DiscordId.ToString();
+                var discordId = GetDiscordLinkByPlayerId(gottenId)?.DiscordId.ToString();
 
                 var ckey = dataReader.GetString("ckey");
 
@@ -347,7 +347,7 @@ public partial class Database(IConfiguration configuration) : IDatabase
         return null;
     }
 
-    private DiscordLink? GetDiscordLink(int id)
+    private DiscordLink? GetDiscordLinkByPlayerId(int id)
     {
         {
             try
@@ -358,6 +358,47 @@ public partial class Database(IConfiguration configuration) : IDatabase
                 var sqlCommand = new MySqlCommand();
                 sqlCommand.Connection = sqlConnection;
                 sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE player_id = @id";
+                sqlCommand.Parameters.AddWithValue("@id", id);
+
+                DiscordLink? link;
+
+                using (var sqlReader = sqlCommand.ExecuteReader())
+                {
+                    sqlReader.Read();
+
+                    link = new DiscordLink(
+                        Id: sqlReader.GetInt32("id"),
+                        DiscordId: sqlReader.GetInt64("discord_id"),
+                        PlayerId: sqlReader.GetInt32("player_id")
+                    );
+                
+                    
+                }
+                
+                sqlConnection.Close();
+                return link;
+
+            }
+            catch (MySqlException exception)
+            {
+                Console.Error.WriteLine(exception.ToString());
+            }
+
+            return null;
+        }
+    }
+    
+    public DiscordLink? GetDiscordLinkByDiscordId(string id)
+    {
+        {
+            try
+            {
+                var sqlConnection = GetConnection();
+                sqlConnection.Open();
+
+                var sqlCommand = new MySqlCommand();
+                sqlCommand.Connection = sqlConnection;
+                sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE discord_id = @id";
                 sqlCommand.Parameters.AddWithValue("@id", id);
 
                 DiscordLink? link;
@@ -980,6 +1021,8 @@ public interface IDatabase
     List<Ticket> GetRecentTickets();
     
     int StickybanWhitelistCkey(string ckey);
+
+    DiscordLink? GetDiscordLinkByDiscordId(string id);
     
 
     IEnumerable<PlayerNote> GetPlayerNotes(int id);
