@@ -914,9 +914,47 @@ public partial class Database(IConfiguration configuration) : IDatabase
         return true;
     }
 
-    public List<Ticket> GetRecentTickets()
+    public List<Round> GetRecentRounds(int numRounds)
     {
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
+
+            var sqlCommand = new MySqlCommand();
+            sqlCommand.Connection = sqlConnection;
+
+            sqlCommand.CommandText = "SELECT * FROM mc_round ORDER BY id DESC LIMIT @limit";
+            sqlCommand.Parameters.AddWithValue("@limit", numRounds);
+
+            var rounds = new List<Round>();
+            using var sqlReader = sqlCommand.ExecuteReader();
+            while (sqlReader.Read())
+            {
+                rounds.Add(new Round
+                {
+                    Id = sqlReader.GetInt32("id")
+                });
+            }
+
+            sqlConnection.Close();
+            return rounds;
+        }
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+
         return [];
+    }
+
+    public List<Ticket> GetTicketsByRoundId(int roundId)
+    {
+        var sqlCommand = new MySqlCommand();
+        sqlCommand.CommandText = "SELECT * FROM ticket WHERE round_id = @round_id";
+        sqlCommand.Parameters.AddWithValue("@round_id", roundId);
+
+        return AcquireTicket(sqlCommand);
     }
 
     private List<Ticket> AcquireTicket(MySqlCommand command)
@@ -1018,7 +1056,7 @@ public interface IDatabase
     bool CreateNote(int playerId, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false);
     bool CreateNote(string ckey, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false);
 
-    List<Ticket> GetRecentTickets();
+    List<Ticket> GetTicketsByRoundId(int roundId);
     
     int StickybanWhitelistCkey(string ckey);
 
@@ -1027,4 +1065,6 @@ public interface IDatabase
 
     IEnumerable<PlayerNote> GetPlayerNotes(int id);
     IEnumerable<PlayerNote> GetAppliedPlayerNotes(int id);
+
+    List<Round> GetRecentRounds(int numRounds);
 }

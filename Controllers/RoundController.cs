@@ -8,7 +8,7 @@ namespace CmApi.Controllers;
 /// </summary>
 [ApiController]
 [Route("[controller]")]
-public class RoundController(IByond byond) : ControllerBase
+public class RoundController(IByond byond, IDatabase database) : ControllerBase
 {
     [HttpGet]
     public IActionResult CurrentRoundInfo()
@@ -20,6 +20,19 @@ public class RoundController(IByond byond) : ControllerBase
         }
 
         return Ok(status);
+    }
+
+    [HttpGet]
+    [Route("Recent")]
+    public IActionResult RecentRoundIds()
+    {
+        var recentRounds = database.GetRecentRounds(10);
+        if (recentRounds.Count != 10)
+        {
+            return StatusCode(501);
+        }
+
+        return Ok(recentRounds);
     }
 
 
