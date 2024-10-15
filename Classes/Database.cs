@@ -978,7 +978,7 @@ public partial class Database(IConfiguration configuration) : IDatabase
                     Action = sqlReader.GetString("action"),
                     Message = sqlReader.GetString("message"),
                     Recipient = GetStringNullSafe(sqlReader, "recipient"),
-                    Sender = sqlReader.GetString("sender"),
+                    Sender = GetStringNullSafe(sqlReader, "sender"),
                     RoundId = GetInt32NullSafe(sqlReader, "round_id"),
                     Time = sqlReader.GetDateTime("time"),
                     Urgent = sqlReader.GetBoolean("urgent")

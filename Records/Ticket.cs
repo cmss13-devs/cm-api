@@ -28,7 +28,7 @@ public record Ticket
     /// <summary>
     /// Who sent this.
     /// </summary>
-    public required string Sender { get; set; }
+    public string? Sender { get; set; }
     /// <summary>
     /// The Round ID that this was sent in.
     /// </summary>
