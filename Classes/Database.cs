@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using CmApi.Records;
 using MySql.Data.MySqlClient;
@@ -914,6 +915,54 @@ public partial class Database(IConfiguration configuration) : IDatabase
         return true;
     }
 
+    public List<Ticket> GetRecentTicket(string ckey, int page = 1)
+    {
+        try
+        {
+            var sqlConnection = GetConnection();
+            sqlConnection.Open();
+
+            var offset = 20 * (page - 1);
+
+            var sqlCommand = new MySqlCommand();
+            sqlCommand.Connection = sqlConnection;
+            sqlCommand.CommandText =
+                "SELECT DISTINCT round_id, ticket FROM ticket WHERE (sender = @ckey OR recipient = @ckey) ORDER BY round_id DESC LIMIT 20 OFFSET @offset";
+
+            sqlCommand.Parameters.AddWithValue("ckey", ckey);
+            sqlCommand.Parameters.AddWithValue("offset", offset);
+
+            var tickets = new List<(int, int)>();
+            using var sqlReader = sqlCommand.ExecuteReader();
+            while (sqlReader.Read())
+            {
+                tickets.Add((
+                    sqlReader.GetInt32("round_id"), sqlReader.GetInt32("ticket")
+                    ));
+            }
+            sqlConnection.Close();
+
+            var queryList = new List<string>();
+            foreach (var ticket in tickets)
+            {
+                queryList.Add($"(round_id = {ticket.Item1} and ticket = {ticket.Item2})");
+            }
+
+            var queryString = string.Join("or", queryList);
+
+            sqlCommand = new MySqlCommand();
+            sqlCommand.CommandText = $"SELECT * FROM ticket WHERE ({queryString})";
+
+            return AcquireTicket(sqlCommand);
+        }         
+        catch (MySqlException exception)
+        {
+            Console.Error.WriteLine(exception.ToString());
+        }
+
+        return [];
+    }
+
     public List<Round> GetRecentRounds(int numRounds)
     {
         try
@@ -1057,12 +1106,13 @@ public interface IDatabase
     bool CreateNote(string ckey, string adminCkey, string text, bool confidential = false, int noteCategory = 1, bool isBan = false);
 
     List<Ticket> GetTicketsByRoundId(int roundId);
+    List<Ticket> GetRecentTicket(string ckey, int page = 1);
     
     int StickybanWhitelistCkey(string ckey);
 
     DiscordLink? GetDiscordLinkByDiscordId(string id);
     
-
+    
     IEnumerable<PlayerNote> GetPlayerNotes(int id);
     IEnumerable<PlayerNote> GetAppliedPlayerNotes(int id);
 

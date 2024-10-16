@@ -20,5 +20,18 @@ public class TicketController(IDatabase database) : ControllerBase
         return Ok(tickets);
     }
 
+    [HttpGet]
+    [Route("User/{ckey:length(1,40)}")]
+    public IActionResult TicketsForUser(string ckey, int page = 1)
+    {
+        var tickets = database.GetRecentTicket(ckey, page);
+        if (tickets.Count == 0)
+        {
+            return NotFound();
+        }
+
+        return Ok(tickets);
+    }
+
 
 }
