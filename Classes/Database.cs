@@ -39,96 +39,97 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            sqlCommand.Connection = sqlConnection;
-
-            Player? user;
-            
-            using (var dataReader = sqlCommand.ExecuteReader())
+            using (var sqlConnection = GetConnection())
             {
+                sqlConnection.Open();
 
-                if (!dataReader.HasRows)
+                sqlCommand.Connection = sqlConnection;
+
+                Player? user;
+            
+                using (var dataReader = sqlCommand.ExecuteReader())
                 {
-                    sqlConnection.Close();
-                    return null;
-                }
+
+                    if (!dataReader.HasRows)
+                    {
+                        sqlConnection.Close();
+                        return null;
+                    }
                 
-                dataReader.Read();
+                    dataReader.Read();
 
-                var gottenId = dataReader.GetInt32("id");
+                    var gottenId = dataReader.GetInt32("id");
 
-                // if our player got made, but not actually by a player existing (ie, a note lookup)
-                if (dataReader.IsDBNull(dataReader.GetOrdinal("last_login")))
-                {
-                    sqlConnection.Close();
-                    return null;
-                }
+                    // if our player got made, but not actually by a player existing (ie, a note lookup)
+                    if (dataReader.IsDBNull(dataReader.GetOrdinal("last_login")))
+                    {
+                        sqlConnection.Close();
+                        return null;
+                    }
 
-                var notes = GetPlayerNotes(gottenId);
-                var bans = GetPlayerJobBans(gottenId);
+                    var notes = GetPlayerNotes(gottenId);
+                    var bans = GetPlayerJobBans(gottenId);
                 
-                string? permabanningAdmin = null;
+                    string? permabanningAdmin = null;
                 
-                var isPermabanned = dataReader.GetBoolean("is_permabanned");
-                var permabanAdminId = GetInt32NullSafe(dataReader, "permaban_admin_id");
-                if (isPermabanned && permabanAdminId.HasValue)
-                {
-                    permabanningAdmin = ShallowPlayerName(permabanAdminId.Value);
-                }
+                    var isPermabanned = dataReader.GetBoolean("is_permabanned");
+                    var permabanAdminId = GetInt32NullSafe(dataReader, "permaban_admin_id");
+                    if (isPermabanned && permabanAdminId.HasValue)
+                    {
+                        permabanningAdmin = ShallowPlayerName(permabanAdminId.Value);
+                    }
 
-                string? timeBanAdmin = null;
+                    string? timeBanAdmin = null;
 
-                var isTimebanned = dataReader.GetBoolean("is_time_banned");
-                var timebanAdminId = GetInt32NullSafe(dataReader, "time_ban_admin_id");
-                if (isTimebanned && timebanAdminId.HasValue)
-                {
-                    timeBanAdmin = ShallowPlayerName(timebanAdminId.Value);
-                }
+                    var isTimebanned = dataReader.GetBoolean("is_time_banned");
+                    var timebanAdminId = GetInt32NullSafe(dataReader, "time_ban_admin_id");
+                    if (isTimebanned && timebanAdminId.HasValue)
+                    {
+                        timeBanAdmin = ShallowPlayerName(timebanAdminId.Value);
+                    }
 
-                var discordId = GetDiscordLinkByPlayerId(gottenId)?.DiscordId.ToString();
+                    var discordId = GetDiscordLinkByPlayerId(gottenId)?.DiscordId.ToString();
 
-                var ckey = dataReader.GetString("ckey");
+                    var ckey = dataReader.GetString("ckey");
 
-                user = new Player(
-                    Id: gottenId,
-                    Ckey: ckey,
-                    LastLogin: dataReader.GetString("last_login"),
-                    IsPermabanned: isPermabanned,
-                    PermabanReason: GetStringNullSafe(dataReader, "permaban_reason"),
-                    PermabanDate: GetStringNullSafe(dataReader, "permaban_date"),
-                    IsTimeBanned: isTimebanned,
-                    TimeBanReason: GetStringNullSafe(dataReader, "time_ban_reason"),
-                    TimeBanAdminId: GetInt32NullSafe(dataReader, "time_ban_admin_id"),
-                    TimeBanDate: GetStringNullSafe(dataReader, "time_ban_date"),
-                    LastKnownIp: dataReader.GetString("last_known_ip"),
-                    LastKnownCid: dataReader.GetString("last_known_cid"),
-                    TimeBanExpiration: GetInt64NullSafe(dataReader, "time_ban_expiration"),
-                    MigratedNotes: dataReader.GetBoolean("migrated_notes"),
-                    MigratedBans: dataReader.GetBoolean("migrated_bans"),
-                    MigratedJobBans: dataReader.GetBoolean("migrated_jobbans"),
-                    PermabanAdminId: permabanAdminId,
-                    StickybanWhitelisted: GetBoolNullSafe(dataReader, "stickyban_whitelisted"),
-                    DiscordLinkId: GetInt32NullSafe(dataReader, "discord_link_id"),
-                    WhitelistStatus: GetStringNullSafe(dataReader, "whitelist_status"),
-                    ByondAccountAge: GetStringNullSafe(dataReader, "byond_account_age"),
-                    FirstJoinDate: GetStringNullSafe(dataReader, "first_join_date"),
-                    Notes: notes,
-                    JobBans: bans,
-                    PermabanAdminCkey: permabanningAdmin,
-                    TimeBanAdminCkey: timeBanAdmin,
-                    DiscordId: discordId
-                );
+                    user = new Player(
+                        Id: gottenId,
+                        Ckey: ckey,
+                        LastLogin: dataReader.GetString("last_login"),
+                        IsPermabanned: isPermabanned,
+                        PermabanReason: GetStringNullSafe(dataReader, "permaban_reason"),
+                        PermabanDate: GetStringNullSafe(dataReader, "permaban_date"),
+                        IsTimeBanned: isTimebanned,
+                        TimeBanReason: GetStringNullSafe(dataReader, "time_ban_reason"),
+                        TimeBanAdminId: GetInt32NullSafe(dataReader, "time_ban_admin_id"),
+                        TimeBanDate: GetStringNullSafe(dataReader, "time_ban_date"),
+                        LastKnownIp: dataReader.GetString("last_known_ip"),
+                        LastKnownCid: dataReader.GetString("last_known_cid"),
+                        TimeBanExpiration: GetInt64NullSafe(dataReader, "time_ban_expiration"),
+                        MigratedNotes: dataReader.GetBoolean("migrated_notes"),
+                        MigratedBans: dataReader.GetBoolean("migrated_bans"),
+                        MigratedJobBans: dataReader.GetBoolean("migrated_jobbans"),
+                        PermabanAdminId: permabanAdminId,
+                        StickybanWhitelisted: GetBoolNullSafe(dataReader, "stickyban_whitelisted"),
+                        DiscordLinkId: GetInt32NullSafe(dataReader, "discord_link_id"),
+                        WhitelistStatus: GetStringNullSafe(dataReader, "whitelist_status"),
+                        ByondAccountAge: GetStringNullSafe(dataReader, "byond_account_age"),
+                        FirstJoinDate: GetStringNullSafe(dataReader, "first_join_date"),
+                        Notes: notes,
+                        JobBans: bans,
+                        PermabanAdminCkey: permabanningAdmin,
+                        TimeBanAdminCkey: timeBanAdmin,
+                        DiscordId: discordId
+                    );
                 
-                _shallowCacheToCkey[gottenId] = ckey;
-                _shallowCacheToId[ckey] = gottenId;
+                    _shallowCacheToCkey[gottenId] = ckey;
+                    _shallowCacheToId[ckey] = gottenId;
 
+                }
+                sqlConnection.Close();
+
+                return user;
             }
-            sqlConnection.Close();
-
-            return user;
-
         }
         catch (MySqlException exception)
         {
@@ -160,46 +161,48 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            sqlCommand.Connection = sqlConnection;
-
-            var notes = new List<PlayerNote>();
-
-            using (var sqlReader = sqlCommand.ExecuteReader())
+            using (var sqlConnection = GetConnection())
             {
-                while (sqlReader.Read())
+                sqlConnection.Open();
+
+                sqlCommand.Connection = sqlConnection;
+
+                var notes = new List<PlayerNote>();
+
+                using (var sqlReader = sqlCommand.ExecuteReader())
                 {
-                    var notingAdminId = sqlReader.GetInt32("admin_id");
-                    var notingAdmin = ShallowPlayerName(notingAdminId);
+                    while (sqlReader.Read())
+                    {
+                        var notingAdminId = sqlReader.GetInt32("admin_id");
+                        var notingAdmin = ShallowPlayerName(notingAdminId);
 
-                    var notedPlayerId = sqlReader.GetInt32("player_id");
-                    var notedPlayer = ShallowPlayerName(notedPlayerId);
+                        var notedPlayerId = sqlReader.GetInt32("player_id");
+                        var notedPlayer = ShallowPlayerName(notedPlayerId);
                     
-                    var note = new PlayerNote(
-                        Id: sqlReader.GetInt32("id"),
-                        PlayerId: notedPlayerId,
-                        AdminId: notingAdminId,
-                        Text: GetStringNullSafe(sqlReader, "text"),
-                        Date: sqlReader.GetString("date"),
-                        IsBan: sqlReader.GetBoolean("is_ban"),
-                        BanTime: GetInt64NullSafe(sqlReader, "ban_time"),
-                        IsConfidential: sqlReader.GetBoolean("is_confidential"),
-                        AdminRank: sqlReader.GetString("admin_rank"),
-                        NoteCategory: GetInt32NullSafe(sqlReader, "note_category"),
-                        RoundId: GetInt32NullSafe(sqlReader, "round_id"),
-                        NotedPlayerCkey: notedPlayer,
-                        NotingAdminCkey: notingAdmin
-                    );
+                        var note = new PlayerNote(
+                            Id: sqlReader.GetInt32("id"),
+                            PlayerId: notedPlayerId,
+                            AdminId: notingAdminId,
+                            Text: GetStringNullSafe(sqlReader, "text"),
+                            Date: sqlReader.GetString("date"),
+                            IsBan: sqlReader.GetBoolean("is_ban"),
+                            BanTime: GetInt64NullSafe(sqlReader, "ban_time"),
+                            IsConfidential: sqlReader.GetBoolean("is_confidential"),
+                            AdminRank: sqlReader.GetString("admin_rank"),
+                            NoteCategory: GetInt32NullSafe(sqlReader, "note_category"),
+                            RoundId: GetInt32NullSafe(sqlReader, "round_id"),
+                            NotedPlayerCkey: notedPlayer,
+                            NotingAdminCkey: notingAdmin
+                        );
 
-                    notes.Add(note);
-                }
+                        notes.Add(note);
+                    }
                 
-            }
+                }
             
-            sqlConnection.Close();
-            return notes;
+                sqlConnection.Close();
+                return notes;
+            }
         }
         catch (MySqlException exception)
         {
@@ -213,46 +216,48 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            var sqlCommand = new MySqlCommand();
-            sqlCommand.Connection = sqlConnection;
-            sqlCommand.CommandText = @"SELECT * FROM player_job_bans WHERE player_id = @id";
-            sqlCommand.Parameters.AddWithValue("@id", id);
-
-            var jobBans = new List<PlayerJobBan>();
-
-            using var sqlReader = sqlCommand.ExecuteReader();
-            while (sqlReader.Read())
+            using (var sqlConnection = GetConnection())
             {
+                sqlConnection.Open();
 
-                var banningAdminId = GetInt32NullSafe(sqlReader, "admin_id");
-                if (!banningAdminId.HasValue)
+                var sqlCommand = new MySqlCommand();
+                sqlCommand.Connection = sqlConnection;
+                sqlCommand.CommandText = @"SELECT * FROM player_job_bans WHERE player_id = @id";
+                sqlCommand.Parameters.AddWithValue("@id", id);
+
+                var jobBans = new List<PlayerJobBan>();
+
+                using var sqlReader = sqlCommand.ExecuteReader();
+                while (sqlReader.Read())
                 {
-                    continue;
+
+                    var banningAdminId = GetInt32NullSafe(sqlReader, "admin_id");
+                    if (!banningAdminId.HasValue)
+                    {
+                        continue;
+                    }
+                
+                    var banningAdminCkey = ShallowPlayerName(banningAdminId.Value);
+                    
+                    var ban = new PlayerJobBan(
+                        Id: sqlReader.GetInt32("id"),
+                        PlayerId: sqlReader.GetInt32("player_id"),
+                        AdminId: banningAdminId,
+                        Text: sqlReader.GetString("text"),
+                        Date: GetStringNullSafe(sqlReader, "date"),
+                        BanTime: GetInt32NullSafe(sqlReader, "ban_time"),
+                        Expiration: GetInt64NullSafe(sqlReader, "expiration"),
+                        Role: sqlReader.GetString("role"),
+                        BanningAdminCkey: banningAdminCkey
+                    );
+                    
+                    jobBans.Add(ban);
                 }
                 
-                var banningAdminCkey = ShallowPlayerName(banningAdminId.Value);
-                    
-                var ban = new PlayerJobBan(
-                    Id: sqlReader.GetInt32("id"),
-                    PlayerId: sqlReader.GetInt32("player_id"),
-                    AdminId: banningAdminId,
-                    Text: sqlReader.GetString("text"),
-                    Date: GetStringNullSafe(sqlReader, "date"),
-                    BanTime: GetInt32NullSafe(sqlReader, "ban_time"),
-                    Expiration: GetInt64NullSafe(sqlReader, "expiration"),
-                    Role: sqlReader.GetString("role"),
-                    BanningAdminCkey: banningAdminCkey
-                );
-                    
-                jobBans.Add(ban);
-            }
-                
-            sqlConnection.Close();
+                sqlConnection.Close();
 
-            return jobBans;
+                return jobBans;
+            }
         }
         catch (MySqlException exception)
         {
@@ -274,24 +279,28 @@ public partial class Database(IConfiguration configuration) : IDatabase
         
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            var sqlCommand = new MySqlCommand();
-            sqlCommand.Connection = sqlConnection;
-            sqlCommand.CommandText = @"SELECT ckey FROM players WHERE id = @id";
-            sqlCommand.Parameters.AddWithValue("@id", id);
-
-            using var sqlReader = sqlCommand.ExecuteReader();
-            if (!sqlReader.HasRows)
+            string ckey;
+            using (var sqlConnection = GetConnection())
             {
-                sqlReader.Close();
-                return null;
-            }
+                sqlConnection.Open();
+
+                var sqlCommand = new MySqlCommand();
+                sqlCommand.Connection = sqlConnection;
+                sqlCommand.CommandText = @"SELECT ckey FROM players WHERE id = @id";
+                sqlCommand.Parameters.AddWithValue("@id", id);
+
+                using var sqlReader = sqlCommand.ExecuteReader();
+                if (!sqlReader.HasRows)
+                {
+                    sqlReader.Close();
+                    return null;
+                }
                 
-            sqlReader.Read();
-            var ckey = sqlReader.GetString("ckey");
-            sqlConnection.Close();
+                sqlReader.Read();
+                ckey = sqlReader.GetString("ckey");
+                sqlConnection.Close();
+            }
+
             _shallowCacheToCkey[id] = ckey;
             _shallowCacheToId[ckey] = id;
             return ckey;
@@ -318,24 +327,28 @@ public partial class Database(IConfiguration configuration) : IDatabase
         
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            var sqlCommand = new MySqlCommand();
-            sqlCommand.Connection = sqlConnection;
-            sqlCommand.CommandText = @"SELECT id FROM players WHERE ckey = @ckey";
-            sqlCommand.Parameters.AddWithValue("@ckey", ckey);
-
-            using var sqlReader = sqlCommand.ExecuteReader();
-            if (!sqlReader.HasRows)
+            int id;
+            using (var sqlConnection = GetConnection())
             {
-                sqlReader.Close();
-                return null;
-            }
+                sqlConnection.Open();
+
+                var sqlCommand = new MySqlCommand();
+                sqlCommand.Connection = sqlConnection;
+                sqlCommand.CommandText = @"SELECT id FROM players WHERE ckey = @ckey";
+                sqlCommand.Parameters.AddWithValue("@ckey", ckey);
+
+                using var sqlReader = sqlCommand.ExecuteReader();
+                if (!sqlReader.HasRows)
+                {
+                    sqlReader.Close();
+                    return null;
+                }
                 
-            sqlReader.Read();
-            var id = sqlReader.GetInt32("id");
-            sqlConnection.Close();
+                sqlReader.Read();
+                id = sqlReader.GetInt32("id");
+                sqlConnection.Close();
+            }
+
             _shallowCacheToCkey[id] = ckey;
             _shallowCacheToId[ckey] = id;
             return id;
@@ -353,32 +366,33 @@ public partial class Database(IConfiguration configuration) : IDatabase
         {
             try
             {
-                var sqlConnection = GetConnection();
-                sqlConnection.Open();
-
-                var sqlCommand = new MySqlCommand();
-                sqlCommand.Connection = sqlConnection;
-                sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE player_id = @id";
-                sqlCommand.Parameters.AddWithValue("@id", id);
-
-                DiscordLink? link;
-
-                using (var sqlReader = sqlCommand.ExecuteReader())
+                using (var sqlConnection = GetConnection())
                 {
-                    sqlReader.Read();
+                    sqlConnection.Open();
 
-                    link = new DiscordLink(
-                        Id: sqlReader.GetInt32("id"),
-                        DiscordId: sqlReader.GetInt64("discord_id"),
-                        PlayerId: sqlReader.GetInt32("player_id")
-                    );
+                    var sqlCommand = new MySqlCommand();
+                    sqlCommand.Connection = sqlConnection;
+                    sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE player_id = @id";
+                    sqlCommand.Parameters.AddWithValue("@id", id);
+
+                    DiscordLink? link;
+
+                    using (var sqlReader = sqlCommand.ExecuteReader())
+                    {
+                        sqlReader.Read();
+
+                        link = new DiscordLink(
+                            Id: sqlReader.GetInt32("id"),
+                            DiscordId: sqlReader.GetInt64("discord_id"),
+                            PlayerId: sqlReader.GetInt32("player_id")
+                        );
                 
                     
-                }
+                    }
                 
-                sqlConnection.Close();
-                return link;
-
+                    sqlConnection.Close();
+                    return link;
+                }
             }
             catch (MySqlException exception)
             {
@@ -394,32 +408,33 @@ public partial class Database(IConfiguration configuration) : IDatabase
         {
             try
             {
-                var sqlConnection = GetConnection();
-                sqlConnection.Open();
-
-                var sqlCommand = new MySqlCommand();
-                sqlCommand.Connection = sqlConnection;
-                sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE discord_id = @id";
-                sqlCommand.Parameters.AddWithValue("@id", id);
-
-                DiscordLink? link;
-
-                using (var sqlReader = sqlCommand.ExecuteReader())
+                using (var sqlConnection = GetConnection())
                 {
-                    sqlReader.Read();
+                    sqlConnection.Open();
 
-                    link = new DiscordLink(
-                        Id: sqlReader.GetInt32("id"),
-                        DiscordId: sqlReader.GetInt64("discord_id"),
-                        PlayerId: sqlReader.GetInt32("player_id")
-                    );
+                    var sqlCommand = new MySqlCommand();
+                    sqlCommand.Connection = sqlConnection;
+                    sqlCommand.CommandText = @"SELECT * FROM discord_links WHERE discord_id = @id";
+                    sqlCommand.Parameters.AddWithValue("@id", id);
+
+                    DiscordLink? link;
+
+                    using (var sqlReader = sqlCommand.ExecuteReader())
+                    {
+                        sqlReader.Read();
+
+                        link = new DiscordLink(
+                            Id: sqlReader.GetInt32("id"),
+                            DiscordId: sqlReader.GetInt64("discord_id"),
+                            PlayerId: sqlReader.GetInt32("player_id")
+                        );
                 
                     
-                }
+                    }
                 
-                sqlConnection.Close();
-                return link;
-
+                    sqlConnection.Close();
+                    return link;
+                }
             }
             catch (MySqlException exception)
             {
@@ -461,11 +476,13 @@ public partial class Database(IConfiguration configuration) : IDatabase
     
     public List<LoginTriplet> GetConnectionsByCkey(string ckey)
     {
-        var sqlCommand = new MySqlCommand();
-        sqlCommand.CommandText = @"SELECT * FROM login_triplets WHERE ckey = @ckey";
-        sqlCommand.Parameters.AddWithValue("@ckey", ckey);
+        using (var sqlCommand = new MySqlCommand())
+        {
+            sqlCommand.CommandText = @"SELECT * FROM login_triplets WHERE ckey = @ckey";
+            sqlCommand.Parameters.AddWithValue("@ckey", ckey);
 
-        return AcquireTriplets(sqlCommand);
+            return AcquireTriplets(sqlCommand);
+        }
     }
     
     public List<LoginTriplet> GetConnectionsWithMatchingIpByCkey(string ckey)
@@ -531,32 +548,33 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            sqlCommand.Connection = sqlConnection;
-
-            var triplets = new List<LoginTriplet>();
-
-            using var sqlReader = sqlCommand.ExecuteReader();
-            while (sqlReader.Read())
+            using (var sqlConnection = GetConnection())
             {
-                triplets.Add(new LoginTriplet(
-                    Id: sqlReader.GetInt32("id"),
-                    Ckey: sqlReader.GetString("ckey"),
-                    Ip1: sqlReader.GetInt32("ip1"),
-                    Ip2: sqlReader.GetInt32("ip2"),
-                    Ip3: sqlReader.GetInt32("ip3"),
-                    Ip4: sqlReader.GetInt32("ip4"),
-                    LastKnownCid: sqlReader.GetString("last_known_cid"),
-                    LoginDate: sqlReader.GetDateTime("login_date")
-                ));
-            }
-                
-            sqlConnection.Close();
+                sqlConnection.Open();
 
-            return triplets;
-            
+                sqlCommand.Connection = sqlConnection;
+
+                var triplets = new List<LoginTriplet>();
+
+                using var sqlReader = sqlCommand.ExecuteReader();
+                while (sqlReader.Read())
+                {
+                    triplets.Add(new LoginTriplet(
+                        Id: sqlReader.GetInt32("id"),
+                        Ckey: sqlReader.GetString("ckey"),
+                        Ip1: sqlReader.GetInt32("ip1"),
+                        Ip2: sqlReader.GetInt32("ip2"),
+                        Ip3: sqlReader.GetInt32("ip3"),
+                        Ip4: sqlReader.GetInt32("ip4"),
+                        LastKnownCid: sqlReader.GetString("last_known_cid"),
+                        LoginDate: sqlReader.GetDateTime("login_date")
+                    ));
+                }
+                
+                sqlConnection.Close();
+
+                return triplets;
+            }
         }
         catch (MySqlException exception)
         {
@@ -620,21 +638,23 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            command.Connection = sqlConnection;
-            
-            var stickybans = new List<Stickyban>();
-
-            using var sqlReader = command.ExecuteReader();
-            while (sqlReader.Read())
+            using (var sqlConnection = GetConnection())
             {
-                stickybans.Add(ReadStickyban(sqlReader));
-            }
+                sqlConnection.Open();
+
+                command.Connection = sqlConnection;
             
-            sqlConnection.Close();
-            return stickybans;
+                var stickybans = new List<Stickyban>();
+
+                using var sqlReader = command.ExecuteReader();
+                while (sqlReader.Read())
+                {
+                    stickybans.Add(ReadStickyban(sqlReader));
+                }
+            
+                sqlConnection.Close();
+                return stickybans;
+            }
         }
         catch (MySqlException exception)
         {
@@ -703,21 +723,23 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            command.Connection = sqlConnection;
-            
-            var stickybans = new List<StickybanMatchedCid>();
-
-            using var sqlReader = command.ExecuteReader();
-            while (sqlReader.Read())
+            using (var sqlConnection = GetConnection())
             {
-                stickybans.Add(ReadStickybanMatchedCid(sqlReader));
-            }
+                sqlConnection.Open();
+
+                command.Connection = sqlConnection;
             
-            sqlConnection.Close();
-            return stickybans;
+                var stickybans = new List<StickybanMatchedCid>();
+
+                using var sqlReader = command.ExecuteReader();
+                while (sqlReader.Read())
+                {
+                    stickybans.Add(ReadStickybanMatchedCid(sqlReader));
+                }
+            
+                sqlConnection.Close();
+                return stickybans;
+            }
         }
         catch (MySqlException exception)
         {
@@ -731,21 +753,23 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            command.Connection = sqlConnection;
-            
-            var stickybans = new List<StickybanMatchedCkey>();
-
-            using var sqlReader = command.ExecuteReader();
-            while (sqlReader.Read())
+            using (var sqlConnection = GetConnection())
             {
-                stickybans.Add(ReadStickybanMatchedCkey(sqlReader));
-            }
+                sqlConnection.Open();
+
+                command.Connection = sqlConnection;
             
-            sqlConnection.Close();
-            return stickybans;
+                var stickybans = new List<StickybanMatchedCkey>();
+
+                using var sqlReader = command.ExecuteReader();
+                while (sqlReader.Read())
+                {
+                    stickybans.Add(ReadStickybanMatchedCkey(sqlReader));
+                }
+            
+                sqlConnection.Close();
+                return stickybans;
+            }
         }
         catch (MySqlException exception)
         {
@@ -759,21 +783,23 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            command.Connection = sqlConnection;
-            
-            var stickybans = new List<StickybanMatchedIp>();
-
-            using var sqlReader = command.ExecuteReader();
-            while (sqlReader.Read())
+            using (var sqlConnection = GetConnection())
             {
-                stickybans.Add(ReadStickybanMatchedIp(sqlReader));
-            }
+                sqlConnection.Open();
+
+                command.Connection = sqlConnection;
             
-            sqlConnection.Close();
-            return stickybans;
+                var stickybans = new List<StickybanMatchedIp>();
+
+                using var sqlReader = command.ExecuteReader();
+                while (sqlReader.Read())
+                {
+                    stickybans.Add(ReadStickybanMatchedIp(sqlReader));
+                }
+            
+                sqlConnection.Close();
+                return stickybans;
+            }
         }
         catch (MySqlException exception)
         {
@@ -838,16 +864,19 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
+            int rows;
+            using (var sqlConnection = GetConnection())
+            {
+                sqlConnection.Open();
 
-            var sqlCommand = new MySqlCommand();
-            sqlCommand.Connection = sqlConnection;
-            sqlCommand.CommandText = @"UPDATE stickyban_matched_ckey SET whitelisted = 1 WHERE ckey = @ckey AND whitelisted = 0";
-            sqlCommand.Parameters.AddWithValue("@ckey", ckey);
+                var sqlCommand = new MySqlCommand();
+                sqlCommand.Connection = sqlConnection;
+                sqlCommand.CommandText = @"UPDATE stickyban_matched_ckey SET whitelisted = 1 WHERE ckey = @ckey AND whitelisted = 0";
+                sqlCommand.Parameters.AddWithValue("@ckey", ckey);
             
-            var rows = sqlCommand.ExecuteNonQuery();
-            sqlConnection.Close();
+                rows = sqlCommand.ExecuteNonQuery();
+                sqlConnection.Close();
+            }
 
             return rows;
         }
@@ -882,28 +911,31 @@ public partial class Database(IConfiguration configuration) : IDatabase
         
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
+            int rows;
+            using (var sqlConnection = GetConnection())
+            {
+                sqlConnection.Open();
 
-            var sqlCommand = new MySqlCommand();
-            sqlCommand.Connection = sqlConnection;
-            sqlCommand.CommandText = 
-                """
-                INSERT INTO player_notes (player_id, admin_id, text, date, is_ban, is_confidential, admin_rank, note_category)
-                VALUES (@player_id, @admin_id, @text, @date, @is_ban, @is_confidential, @admin_rank, @note_category)
-                """;
+                var sqlCommand = new MySqlCommand();
+                sqlCommand.Connection = sqlConnection;
+                sqlCommand.CommandText = 
+                    """
+                    INSERT INTO player_notes (player_id, admin_id, text, date, is_ban, is_confidential, admin_rank, note_category)
+                    VALUES (@player_id, @admin_id, @text, @date, @is_ban, @is_confidential, @admin_rank, @note_category)
+                    """;
 
-            sqlCommand.Parameters.AddWithValue("@player_id", playerId);
-            sqlCommand.Parameters.AddWithValue("@admin_id", adminId);
-            sqlCommand.Parameters.AddWithValue("@text", text);
-            sqlCommand.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"));
-            sqlCommand.Parameters.AddWithValue("@is_ban", isBan ? 1 : 0);
-            sqlCommand.Parameters.AddWithValue("@is_confidential", confidential ? 1 : 0);
-            sqlCommand.Parameters.AddWithValue("@admin_rank", "[cmdb]");
-            sqlCommand.Parameters.AddWithValue("@note_category", noteCategory);
+                sqlCommand.Parameters.AddWithValue("@player_id", playerId);
+                sqlCommand.Parameters.AddWithValue("@admin_id", adminId);
+                sqlCommand.Parameters.AddWithValue("@text", text);
+                sqlCommand.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"));
+                sqlCommand.Parameters.AddWithValue("@is_ban", isBan ? 1 : 0);
+                sqlCommand.Parameters.AddWithValue("@is_confidential", confidential ? 1 : 0);
+                sqlCommand.Parameters.AddWithValue("@admin_rank", "[cmdb]");
+                sqlCommand.Parameters.AddWithValue("@note_category", noteCategory);
             
-            var rows = sqlCommand.ExecuteNonQuery();
-            sqlConnection.Close();
+                rows = sqlCommand.ExecuteNonQuery();
+                sqlConnection.Close();
+            }
 
             return rows > 0;
         }
@@ -919,41 +951,43 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            var offset = 20 * (page - 1);
-
-            var sqlCommand = new MySqlCommand();
-            sqlCommand.Connection = sqlConnection;
-            sqlCommand.CommandText =
-                "SELECT DISTINCT round_id, ticket FROM ticket WHERE (sender = @ckey OR recipient = @ckey) ORDER BY round_id DESC LIMIT 20 OFFSET @offset";
-
-            sqlCommand.Parameters.AddWithValue("ckey", ckey);
-            sqlCommand.Parameters.AddWithValue("offset", offset);
-
-            var tickets = new List<(int, int)>();
-            using var sqlReader = sqlCommand.ExecuteReader();
-            while (sqlReader.Read())
+            using (var sqlConnection = GetConnection())
             {
-                tickets.Add((
-                    sqlReader.GetInt32("round_id"), sqlReader.GetInt32("ticket")
+                sqlConnection.Open();
+
+                var offset = 20 * (page - 1);
+
+                var sqlCommand = new MySqlCommand();
+                sqlCommand.Connection = sqlConnection;
+                sqlCommand.CommandText =
+                    "SELECT DISTINCT round_id, ticket FROM ticket WHERE (sender = @ckey OR recipient = @ckey) ORDER BY round_id DESC LIMIT 20 OFFSET @offset";
+
+                sqlCommand.Parameters.AddWithValue("ckey", ckey);
+                sqlCommand.Parameters.AddWithValue("offset", offset);
+
+                var tickets = new List<(int, int)>();
+                using var sqlReader = sqlCommand.ExecuteReader();
+                while (sqlReader.Read())
+                {
+                    tickets.Add((
+                        sqlReader.GetInt32("round_id"), sqlReader.GetInt32("ticket")
                     ));
+                }
+                sqlConnection.Close();
+
+                var queryList = new List<string>();
+                foreach (var ticket in tickets)
+                {
+                    queryList.Add($"(round_id = {ticket.Item1} and ticket = {ticket.Item2})");
+                }
+
+                var queryString = string.Join("or", queryList);
+
+                sqlCommand = new MySqlCommand();
+                sqlCommand.CommandText = $"SELECT * FROM ticket WHERE ({queryString})";
+
+                return AcquireTicket(sqlCommand);
             }
-            sqlConnection.Close();
-
-            var queryList = new List<string>();
-            foreach (var ticket in tickets)
-            {
-                queryList.Add($"(round_id = {ticket.Item1} and ticket = {ticket.Item2})");
-            }
-
-            var queryString = string.Join("or", queryList);
-
-            sqlCommand = new MySqlCommand();
-            sqlCommand.CommandText = $"SELECT * FROM ticket WHERE ({queryString})";
-
-            return AcquireTicket(sqlCommand);
         }         
         catch (MySqlException exception)
         {
@@ -967,27 +1001,29 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            var sqlCommand = new MySqlCommand();
-            sqlCommand.Connection = sqlConnection;
-
-            sqlCommand.CommandText = "SELECT * FROM mc_round ORDER BY id DESC LIMIT @limit";
-            sqlCommand.Parameters.AddWithValue("@limit", numRounds);
-
-            var rounds = new List<Round>();
-            using var sqlReader = sqlCommand.ExecuteReader();
-            while (sqlReader.Read())
+            using (var sqlConnection = GetConnection())
             {
-                rounds.Add(new Round
-                {
-                    Id = sqlReader.GetInt32("id")
-                });
-            }
+                sqlConnection.Open();
 
-            sqlConnection.Close();
-            return rounds;
+                var sqlCommand = new MySqlCommand();
+                sqlCommand.Connection = sqlConnection;
+
+                sqlCommand.CommandText = "SELECT * FROM mc_round ORDER BY id DESC LIMIT @limit";
+                sqlCommand.Parameters.AddWithValue("@limit", numRounds);
+
+                var rounds = new List<Round>();
+                using var sqlReader = sqlCommand.ExecuteReader();
+                while (sqlReader.Read())
+                {
+                    rounds.Add(new Round
+                    {
+                        Id = sqlReader.GetInt32("id")
+                    });
+                }
+
+                sqlConnection.Close();
+                return rounds;
+            }
         }
         catch (MySqlException exception)
         {
@@ -1010,32 +1046,34 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
-            var sqlConnection = GetConnection();
-            sqlConnection.Open();
-
-            command.Connection = sqlConnection;
-            
-            var tickets = new List<Ticket>();
-
-            using var sqlReader = command.ExecuteReader();
-            while (sqlReader.Read())
+            using (var sqlConnection = GetConnection())
             {
-                tickets.Add(new Ticket
-                {
-                    Id = sqlReader.GetInt32("id"),
-                    TicketId = sqlReader.GetInt32("ticket"),
-                    Action = sqlReader.GetString("action"),
-                    Message = sqlReader.GetString("message"),
-                    Recipient = GetStringNullSafe(sqlReader, "recipient"),
-                    Sender = GetStringNullSafe(sqlReader, "sender"),
-                    RoundId = GetInt32NullSafe(sqlReader, "round_id"),
-                    Time = sqlReader.GetDateTime("time"),
-                    Urgent = sqlReader.GetBoolean("urgent")
-                });
-            }
+                sqlConnection.Open();
+
+                command.Connection = sqlConnection;
             
-            sqlConnection.Close();
-            return tickets;
+                var tickets = new List<Ticket>();
+
+                using var sqlReader = command.ExecuteReader();
+                while (sqlReader.Read())
+                {
+                    tickets.Add(new Ticket
+                    {
+                        Id = sqlReader.GetInt32("id"),
+                        TicketId = sqlReader.GetInt32("ticket"),
+                        Action = sqlReader.GetString("action"),
+                        Message = sqlReader.GetString("message"),
+                        Recipient = GetStringNullSafe(sqlReader, "recipient"),
+                        Sender = GetStringNullSafe(sqlReader, "sender"),
+                        RoundId = GetInt32NullSafe(sqlReader, "round_id"),
+                        Time = sqlReader.GetDateTime("time"),
+                        Urgent = sqlReader.GetBoolean("urgent")
+                    });
+                }
+            
+                sqlConnection.Close();
+                return tickets;
+            }
         }
         catch (MySqlException exception)
         {
