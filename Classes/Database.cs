@@ -39,13 +39,15 @@ public partial class Database(IConfiguration configuration) : IDatabase
     {
         try
         {
+            
+            Player? user;
+
             using (var sqlConnection = GetConnection())
             {
                 sqlConnection.Open();
 
                 sqlCommand.Connection = sqlConnection;
 
-                Player? user;
             
                 using (var dataReader = sqlCommand.ExecuteReader())
                 {
@@ -66,40 +68,17 @@ public partial class Database(IConfiguration configuration) : IDatabase
                         sqlConnection.Close();
                         return null;
                     }
-
-                    var notes = GetPlayerNotes(gottenId);
-                    var bans = GetPlayerJobBans(gottenId);
-                
-                    string? permabanningAdmin = null;
-                
-                    var isPermabanned = dataReader.GetBoolean("is_permabanned");
-                    var permabanAdminId = GetInt32NullSafe(dataReader, "permaban_admin_id");
-                    if (isPermabanned && permabanAdminId.HasValue)
-                    {
-                        permabanningAdmin = ShallowPlayerName(permabanAdminId.Value);
-                    }
-
-                    string? timeBanAdmin = null;
-
-                    var isTimebanned = dataReader.GetBoolean("is_time_banned");
-                    var timebanAdminId = GetInt32NullSafe(dataReader, "time_ban_admin_id");
-                    if (isTimebanned && timebanAdminId.HasValue)
-                    {
-                        timeBanAdmin = ShallowPlayerName(timebanAdminId.Value);
-                    }
-
-                    var discordId = GetDiscordLinkByPlayerId(gottenId)?.DiscordId.ToString();
-
+                    
                     var ckey = dataReader.GetString("ckey");
 
                     user = new Player(
                         Id: gottenId,
                         Ckey: ckey,
                         LastLogin: dataReader.GetString("last_login"),
-                        IsPermabanned: isPermabanned,
+                        IsPermabanned: dataReader.GetBoolean("is_permabanned"),
                         PermabanReason: GetStringNullSafe(dataReader, "permaban_reason"),
                         PermabanDate: GetStringNullSafe(dataReader, "permaban_date"),
-                        IsTimeBanned: isTimebanned,
+                        IsTimeBanned: dataReader.GetBoolean("is_time_banned"),
                         TimeBanReason: GetStringNullSafe(dataReader, "time_ban_reason"),
                         TimeBanAdminId: GetInt32NullSafe(dataReader, "time_ban_admin_id"),
                         TimeBanDate: GetStringNullSafe(dataReader, "time_ban_date"),
@@ -109,17 +88,12 @@ public partial class Database(IConfiguration configuration) : IDatabase
                         MigratedNotes: dataReader.GetBoolean("migrated_notes"),
                         MigratedBans: dataReader.GetBoolean("migrated_bans"),
                         MigratedJobBans: dataReader.GetBoolean("migrated_jobbans"),
-                        PermabanAdminId: permabanAdminId,
+                        PermabanAdminId: GetInt32NullSafe(dataReader, "permaban_admin_id"),
                         StickybanWhitelisted: GetBoolNullSafe(dataReader, "stickyban_whitelisted"),
                         DiscordLinkId: GetInt32NullSafe(dataReader, "discord_link_id"),
                         WhitelistStatus: GetStringNullSafe(dataReader, "whitelist_status"),
                         ByondAccountAge: GetStringNullSafe(dataReader, "byond_account_age"),
-                        FirstJoinDate: GetStringNullSafe(dataReader, "first_join_date"),
-                        Notes: notes,
-                        JobBans: bans,
-                        PermabanAdminCkey: permabanningAdmin,
-                        TimeBanAdminCkey: timeBanAdmin,
-                        DiscordId: discordId
+                        FirstJoinDate: GetStringNullSafe(dataReader, "first_join_date")
                     );
                 
                     _shallowCacheToCkey[gottenId] = ckey;
@@ -127,9 +101,27 @@ public partial class Database(IConfiguration configuration) : IDatabase
 
                 }
                 sqlConnection.Close();
-
-                return user;
             }
+            
+            user.Notes = GetPlayerNotes(user.Id);
+            user.JobBans = GetPlayerJobBans(user.Id);
+
+            if (user.IsPermabanned)
+            {
+                user.PermabanAdminCkey =
+                    user.PermabanAdminId.HasValue ? ShallowPlayerName(user.PermabanAdminId.Value) : null;
+            }
+
+            if (user.IsTimeBanned)
+            {
+                user.TimeBanAdminCkey =
+                    user.TimeBanAdminId.HasValue ? ShallowPlayerName(user.TimeBanAdminId.Value) : null;
+            }
+            
+            user.DiscordId = GetDiscordLinkByPlayerId(user.Id)?.DiscordId.ToString();
+            
+            return user;
+
         }
         catch (MySqlException exception)
         {
